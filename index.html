@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Kiss Filler</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif;
+            background-color: #fce7f3; /* Light pink */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            touch-action: none; /* Disable panning/zooming on mobile */
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #instructions {
+            position: absolute;
+            top: 35%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2rem;
+            color: #db2777; /* Hot pink */
+            text-align: center;
+            font-weight: bold;
+            z-index: 10;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        #final-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2.5rem;
+            color: #be185d; /* Deeper pink */
+            text-align: center;
+            font-weight: bold;
+            z-index: 300;
+            pointer-events: none;
+            user-select: none;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            background-color: rgba(255, 255, 255, 0.5);
+            padding: 2rem;
+            border-radius: 1rem;
+            backdrop-filter: blur(5px);
+        }
+
+        #click-counter {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 1.5rem;
+            color: #9d174d;
+            z-index: 10;
+            user-select: none;
+        }
+
+        /* This is the canvas for Matter.js - now hidden */
+        canvas {
+            display: none; /* Hide the Matter.js canvas as we are using HTML elements */
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* This is where the emoji elements will live */
+        #emoji-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            /* Allow clicks to go through to the container */
+            pointer-events: none;
+        }
+
+        .emoji {
+            position: absolute;
+            font-size: 2.5rem; /* ~40px */
+            user-select: none;
+            pointer-events: none; /* Make emojis not intercept clicks */
+            line-height: 1; /* Ensure text takes minimal vertical space */
+            transform-origin: center center; /* For accurate rotation */
+        }
+    </style>
+</head>
+<body>
+
+    <div id="container">
+        <div id="instructions">I'm feeling a little un-loved.<br>Click to fill me up!</div>
+        <div id="final-message">Okay, okay, I get it...<br>now come give me the real ones. 😉</div>
+        <div id="click-counter">Kisses: 0</div>
+        <div id="emoji-container"></div>
+        <!-- Matter.js will create its own canvas here (and we hide it with display:none) --></div>
+
+    <!-- Audio files --><audio id="boop-sound" src="boop.mp3" preload="auto"></audio>
+    <audio id="reveal-sound" src="reveal_ding.mp3" preload="auto"></audio>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Matter.js Setup ---
+            const { Engine, Render, Runner, World, Bodies, Body, Events } = Matter;
+
+            const container = document.getElementById('container');
+            const emojiContainer = document.getElementById('emoji-container');
+            const instructions = document.getElementById('instructions');
+            const finalMessage = document.getElementById('final-message');
+            const clickCounter = document.getElementById('click-counter');
+            const boopSound = document.getElementById('boop-sound');
+            const revealSound = document.getElementById('reveal-sound'); // Fixed bug: ID was wrong
+
+            const worldWidth = window.innerWidth;
+            const worldHeight = window.innerHeight;
+            // The effective size of the emoji for physics calculation
+            const emojiPhysicsSize = 40; 
+            const clicksToReveal = 30;
+            let clickCount = 0;
+            let messageRevealed = false;
+
+            // Create engine
+            const engine = Engine.create({
+                gravity: { y: 0.4 },
+                enableSleeping: true
+            });
+            const world = engine.world;
+
+            // Create a renderer but make its canvas invisible (we only use it for the engine)
+            const render = Render.create({
+                element: container,
+                engine: engine,
+                canvas: document.createElement('canvas'),
+                options: {
+                    width: worldWidth,
+                    height: worldHeight,
+                    wireframes: false, 
+                    background: 'transparent',
+                    showIds: false // Hide Matter.js debugging IDs
+                }
+            });
+            render.canvas.style.display = 'none'; // Explicitly hide the Matter.js canvas
+            Render.run(render);
+
+            // Create runner
+            const runner = Runner.create();
+            Runner.run(runner, engine);
+
+            // --- Create Walls ---
+            const wallOptions = {
+                isStatic: true,
+                render: { visible: false } 
+            };
+            World.add(world, [
+                // Floor (replaced flat floor with a 'V' shape to collect emojis)
+                Bodies.rectangle(worldWidth / 4, worldHeight - 20, worldWidth / 2.5, 60, { ...wallOptions, angle: Math.PI / 20 }),
+                Bodies.rectangle(worldWidth * 0.75, worldHeight - 20, worldWidth / 2.5, 60, { ...wallOptions, angle: -Math.PI / 20 }),
+                
+                // Left wall
+                Bodies.rectangle(-(emojiPhysicsSize / 2), worldHeight / 2, emojiPhysicsSize, worldHeight, wallOptions),
+                // Right wall
+                Bodies.rectangle(worldWidth + (emojiPhysicsSize / 2), worldHeight / 2, emojiPhysicsSize, worldHeight, wallOptions)
+            ]);
+            
+            // --- Emoji Tracking ---
+            let emojiBodies = [];
+            let emojiElements = [];
+
+            // --- Click/Touch Event ---
+            function addEmoji(x, y) {
+                if (messageRevealed) return; 
+                
+                clickCount++;
+                clickCounter.textContent = `Kisses: ${clickCount}`;
+
+                boopSound.currentTime = 0;
+                boopSound.play().catch(e => console.log("Audio play prevented"));
+
+                const emojiText = Math.random() < 0.5 ? '💋' : '❤️';
+
+                // 1. Create the HTML emoji element first
+                const emojiElement = document.createElement('div');
+                emojiElement.classList.add('emoji');
+                emojiElement.textContent = emojiText;
+                // Set initial position *before* adding to DOM for correct offset calculations
+                emojiElement.style.left = `${x - emojiPhysicsSize / 2}px`;
+                emojiElement.style.top = `${y - emojiPhysicsSize / 2}px`;
+                emojiContainer.appendChild(emojiElement);
+                emojiElements.push(emojiElement);
+
+                // 2. Create the Matter.js body at the same location
+                const body = Bodies.circle(x, y, emojiPhysicsSize / 2, {
+                    restitution: 0.5,
+                    friction: 0.3,
+                    density: 0.01,
+                    isSleeping: false,
+                    // Store a reference to the HTML element
+                    render: {
+                        sprite: {
+                            texture: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', // Transparent 1x1 GIF for Matter.js internal rendering
+                            xScale: 1, // These are placeholders, we control via CSS
+                            yScale: 1
+                        }
+                    }
+                });
+                // Attach the HTML element to the body for easy lookup in afterUpdate
+                body.htmlElement = emojiElement;
+                World.add(world, body);
+                emojiBodies.push(body);
+
+                // 3. Hide instructions after first click
+                if (clickCount === 1) {
+                    instructions.style.transition = 'opacity 0.5s';
+                    instructions.style.opacity = '0';
+                }
+
+                // 4. Check for reveal
+                if (clickCount >= clicksToReveal && !messageRevealed) {
+                    messageRevealed = true;
+                    finalMessage.style.opacity = '1';
+                    revealSound.play().catch(e => console.log("Audio play prevented"));
+                }
+            }
+            
+            container.addEventListener('mousedown', (e) => {
+                addEmoji(e.clientX, e.clientY);
+            });
+            
+            container.addEventListener('touchstart', (e) => {
+                e.preventDefault(); 
+                const touch = e.touches[0];
+                addEmoji(touch.clientX, touch.clientY);
+            }, { passive: false });
+
+            // --- Sync HTML with Physics ---
+            Events.on(engine, 'afterUpdate', () => {
+                for (let i = 0; i < emojiBodies.length; i++) {
+                    const body = emojiBodies[i];
+                    const element = body.htmlElement; // Retrieve the HTML element directly from the body
+
+                    if (body.isSleeping) continue;
+
+                    // Update HTML element position and rotation
+                    // Matter.js position is center, HTML position is top-left
+                    const x = body.position.x - (emojiPhysicsSize / 2);
+                    const y = body.position.y - (emojiPhysicsSize / 2);
+                    
+                    element.style.transform = `translate(${x}px, ${y}px) rotate(${body.angle}rad)`;
+
+                    // Optional: remove if it falls off-screen
+                    if (body.position.y > worldHeight + 100) {
+                        World.remove(world, body);
+                        element.remove();
+                        emojiBodies.splice(i, 1);
+                        emojiElements.splice(i, 1); // Keep emojiElements array synced if needed
+                        i--; 
+                    }
+                }
+            });
+
+            // --- Handle Window Resize ---
+            window.addEventListener('resize', () => {
+                // For a complex physics simulation, a full reload is often the easiest way to handle resize.
+                location.reload();
+            });
+
+        });
+    </script>
+</body>
+</html>
+
+
