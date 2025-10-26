@@ -1,245 +1,184 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Kiss Filler</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body {
-            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif;
-            background-color: #fce7f3; /* Light pink */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            overflow: hidden;
-            touch-action: none; /* Disable panning/zooming on mobile */
-        }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1, user-scalable=no" />
+<title>Kiss Filler</title>
 
-        #container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-        }
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 
-        #instructions {
-            position: absolute;
-            top: 35%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 2rem;
-            color: #db2777; /* Hot pink */
-            text-align: center;
-            font-weight: bold;
-            z-index: 10;
-            pointer-events: none;
-            user-select: none;
-        }
-
-        #final-message {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 2.5rem;
-            color: #be185d; /* Deeper pink */
-            text-align: center;
-            font-weight: bold;
-            z-index: 300;
-            pointer-events: none;
-            user-select: none;
-            opacity: 0;
-            transition: opacity 1s ease-in-out;
-            background-color: rgba(255, 255, 255, 0.5);
-            padding: 2rem;
-            border-radius: 1rem;
-            backdrop-filter: blur(5px);
-        }
-
-        #click-counter {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            font-size: 1.5rem;
-            color: #9d174d;
-            z-index: 10;
-            user-select: none;
-        }
-
-        /* This is the canvas for Matter.js - now VISIBLE */
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1; /* Behind the UI elements */
-        }
-    </style>
+<style>
+  html,body { height:100%; margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial; }
+  body {
+    background:#fce7f3;
+    display:flex; align-items:center; justify-content:center;
+    min-height:100vh; overflow:hidden; touch-action:none;
+  }
+  #container { position:relative; width:100vw; height:100vh; overflow:hidden; }
+  #instructions {
+    position:absolute; top:35%; left:50%; transform:translate(-50%,-50%);
+    font-size:2rem; color:#db2777; text-align:center; font-weight:700; z-index:400;
+    pointer-events:none; user-select:none;
+  }
+  #final-message {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    font-size:2.2rem; color:#be185d; text-align:center; font-weight:700; z-index:600;
+    pointer-events:none; user-select:none; opacity:0; transition:opacity .4s ease;
+    background:rgba(255,255,255,.6); padding:1rem 1.2rem; border-radius:12px; backdrop-filter:blur(4px);
+  }
+  #click-counter { position:absolute; top:18px; left:18px; font-size:1.2rem; color:#9d174d; z-index:400; user-select:none; }
+  canvas { position:absolute; top:0; left:0; z-index:1; pointer-events:none; }
+</style>
 </head>
 <body>
+  <div id="container">
+    <div id="instructions">I'm feeling a little un-loved.<br>Click to fill me up!</div>
+    <div id="final-message"></div>
+    <div id="click-counter">Kisses: 0</div>
+  </div>
 
-    <div id="container">
-        <div id="instructions">I'm feeling a little un-loved.<br>Click to fill me up!</div>
-        <div id="final-message">Okay, okay, I get it...<br>now come give me the real ones. 😉</div>
-        <div id="click-counter">Kisses: 0</div>
-        <!-- Matter.js will create its own canvas here -->
-    </div>
+  <audio id="boop-sound" src="boop.mp3" preload="auto"></audio>
+  <audio id="reveal-sound" src="reveal_ding.mp3" preload="auto"></audio>
 
-    <!-- Audio files -->
-    <audio id="boop-sound" src="boop.mp3" preload="auto"></audio>
-    <audio id="reveal-sound" src="reveal_ding.mp3" preload="auto"></audio>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const { Engine, Render, Runner, World, Bodies, Events } = Matter;
+  const container = document.getElementById('container');
+  const instructions = document.getElementById('instructions');
+  const finalMessage = document.getElementById('final-message');
+  const clickCounter = document.getElementById('click-counter');
+  const boopSound = document.getElementById('boop-sound');
+  const revealSound = document.getElementById('reveal-sound');
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const { Engine, Render, Runner, World, Bodies, Body, Events } = Matter;
+  const worldWidth = window.innerWidth;
+  const worldHeight = window.innerHeight;
+  const emojiPx = 56;
+  const physicsRadius = emojiPx / 2;
+  const clicksToReveal = 100;
 
-            const container = document.getElementById('container');
-            const instructions = document.getElementById('instructions');
-            const finalMessage = document.getElementById('final-message');
-            const clickCounter = document.getElementById('click-counter');
-            const boopSound = document.getElementById('boop-sound');
-            const revealSound = document.getElementById('reveal-sound');
+  const emojiList = ['💋','❤️','😘','💕','💖','💞','😍','💓','❣️','💘','💟','💌'];
 
-            const worldWidth = window.innerWidth;
-            const worldHeight = window.innerHeight;
-            const emojiSize = 30;
-            const clicksToReveal = 100; // Set to 100
-            let clickCount = 0;
-            let messageRevealed = false;
+  const messages = [
+    "You make my day better.","Okay, that's cute.","You're a delight.","Keep going, I'm listening.",
+    "Stop it, you're sweet.","I needed that!","That's one for the books.","Too charming.","You're on a roll.",
+    "Swoon-worthy.","Right in the feels.","I'm blushing—thanks.","Who gave you permission?","Point taken. Come closer.",
+    "You win this round.","That's my favorite one yet.","Okay now I'm smiling.","You and your ways.","I see you, human.",
+    "All of the heart eyes.","Please never stop.","You have impeccable timing.","If kisses were currency...",
+    "Consider me funded.","That's a high-quality kiss.","I approve this message.","Do it again, slowly.","Wow. Just—wow.",
+    "Call the orchestra.","That's the one.","I owe you a treat now.","You're uncontrollably cute.","Heart officially stolen.",
+    "You just raised the stakes.","I'll remember that.","This is dangerously adorable.","Resisting is futile.",
+    "Absolutely legendary.","Recorded for posterity.","I might faint. In a good way.","You broke the cuteness meter.",
+    "My soul just smiled.","Please put that in writing.","That's a keeper.","Bookmarking this feeling.",
+    "You have unlocked happiness.","Stop — I'm melting.","That's a masterpiece.","Cinematic moment.",
+    "You just rewrote the manual.","Peak affection achieved.","There should be a trophy.","My day: made.",
+    "That deserves a parade.","Thank you, sincere and loud.","You are very persuasive.","More please."
+  ];
 
-            // --- THIS IS THE NEW MESSAGE LIST ---
-            // --- ADD ALL YOUR 50-60 MESSAGES HERE ---
-            const finalMessages = [
-                "Okay, okay, I get it...<br>now come give me the real ones. 😉",
-                "You've unlocked: 100 Kisses! <br>Claim your prize in person.",
-                "My 'Mutallo' is the best clicker! ❤️",
-                "Wow, 100! You must really love me.",
-                "Your score is... 100% CUTE!",
-                "Add your next message here...",
-                "And another one here...",
-                "...keep going!"
-                // Add all 50-60 of your messages here
-            ];
-            // --- END OF MESSAGE LIST ---
+  // Physics setup
+  const engine = Engine.create({ gravity:{ y:0.45 } });
+  const world = engine.world;
+  const render = Render.create({
+    element:container, engine, options:{ width:worldWidth, height:worldHeight, wireframes:false, background:'transparent' }
+  });
+  Render.run(render);
+  Runner.run(Runner.create(), engine);
+  const wallOpts={isStatic:true,render:{visible:false}};
+  World.add(world,[
+    Bodies.rectangle(worldWidth/2,worldHeight+40,worldWidth+200,80,wallOpts),
+    Bodies.rectangle(-40,worldHeight/2,80,worldHeight,wallOpts),
+    Bodies.rectangle(worldWidth+40,worldHeight/2,80,worldHeight,wallOpts)
+  ]);
 
-            const emojis = ['💋', '❤️', '😘', '💕', '💖', '💞'];
+  // Emoji PNG loader
+  const imageCache=new Map();
+  function emojiToCodePoint(e){return Array.from(e).map(c=>c.codePointAt(0).toString(16)).join('-');}
+  function loadEmojiPNG(e){
+    if(imageCache.has(e)) return;
+    const code=emojiToCodePoint(e);
+    const url=`https://twemoji.maxcdn.com/v/latest/72x72/${code}.png`;
+    const img=new Image(); img.crossOrigin='anonymous';
+    img.onload=()=>imageCache.set(e,img);
+    img.onerror=()=>imageCache.set(e,null);
+    img.src=url;
+  }
+  emojiList.forEach(loadEmojiPNG);
+  const bodyEmoji=new Map();
 
-            // Matter.js engine setup
-            const engine = Engine.create({ gravity: { y: 0.4 } });
-            const world = engine.world;
+  Events.on(render,'afterRender',()=>{
+    const ctx=render.context;
+    bodyEmoji.forEach((emoji,id)=>{
+      const b=world.bodies.find(bb=>bb.id===id);
+      if(!b) return;
+      ctx.save(); ctx.translate(b.position.x,b.position.y); ctx.rotate(b.angle);
+      const img=imageCache.get(emoji);
+      if(img){ ctx.drawImage(img,-emojiPx/2,-emojiPx/2,emojiPx,emojiPx); }
+      else { ctx.font=`${emojiPx}px "Segoe UI Emoji","Apple Color Emoji",sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(emoji,0,0); }
+      ctx.restore();
+    });
+  });
 
-            // Create renderer (we’ll override drawing)
-            const render = Render.create({
-                element: container,
-                engine: engine,
-                options: {
-                    width: worldWidth,
-                    height: worldHeight,
-                    wireframes: false,
-                    background: '#fce7f3' // Match body background
-                }
-            });
-            Render.run(render);
-            const runner = Runner.create();
-            Runner.run(runner, engine);
+  // --- Message sequence tracking per IP/device ---
+  const STORAGE_PREFIX='kiss_seq_';
+  let ownerKey=null;
 
-            // Walls
-            const wallOptions = { isStatic: true, render: { visible: false } };
-            World.add(world, [
-                // Flat floor to collect them
-                Bodies.rectangle(worldWidth / 2, worldHeight + 30, worldWidth + 100, 60, wallOptions),
-                // Left wall
-                Bodies.rectangle(-30, worldHeight / 2, 60, worldHeight, wallOptions),
-                // Right wall
-                Bodies.rectangle(worldWidth + 30, worldHeight / 2, 60, worldHeight, wallOptions)
-            ]);
+  function hashString(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)+s.charCodeAt(i);return String(h>>>0);}
+  function initOwnerKey(){
+    return new Promise(res=>{
+      fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>{
+        const ip=d?.ip||'local';
+        ownerKey=STORAGE_PREFIX+hashString(ip);
+        res(ownerKey);
+      }).catch(()=>{ownerKey=STORAGE_PREFIX+'local';res(ownerKey);});
+    });
+  }
 
-            // Custom rendering hook for emoji
-            const emojiBodies = new Map();
+  function loadIndex(){try{return parseInt(localStorage.getItem(ownerKey+'_i'))||0;}catch{return 0;}}
+  function saveIndex(i){try{localStorage.setItem(ownerKey+'_i',String(i));}catch{}}
 
-            Events.on(render, 'afterRender', () => {
-                const ctx = render.context;
-                // Set font properties *every frame* (safer)
-                ctx.font = `${emojiSize}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
+  function getNextMessage(){
+    let i=loadIndex();
+    const msg=messages[i];
+    i=(i+1)%messages.length;
+    saveIndex(i);
+    return msg;
+  }
 
-                emojiBodies.forEach((emoji, body) => {
-                    ctx.save();
-                    ctx.translate(body.position.x, body.position.y);
-                    ctx.rotate(body.angle);
-                    ctx.fillText(emoji, 0, 0);
-                    ctx.restore();
-                });
-            });
+  initOwnerKey(); // start async, will complete quickly
 
-            function addEmoji(x, y) {
-                if (messageRevealed) return;
+  // Clicks and reveal logic
+  let clickCount=0, messageRevealed=false;
 
-                clickCount++;
-                clickCounter.textContent = `Kisses: ${clickCount}`;
-                boopSound.currentTime = 0;
-                boopSound.play().catch(() => {});
+  function addEmoji(x,y){
+    if(messageRevealed) return;
+    clickCount++;
+    clickCounter.textContent=`Kisses: ${clickCount}`;
+    boopSound.currentTime=0; boopSound.play().catch(()=>{});
+    const emoji=emojiList[Math.floor(Math.random()*emojiList.length)];
+    const body=Bodies.circle(x,y,physicsRadius,{restitution:0.6,friction:0.2,density:0.005});
+    World.add(world,body); bodyEmoji.set(body.id,emoji);
 
-                const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+    if(clickCount===1){ instructions.style.opacity='0'; }
 
-                const body = Bodies.circle(x, y, emojiSize / 2, {
-                    restitution: 0.6,
-                    friction: 0.3,
-                    density: 0.01
-                    // <-- Removed the 'render: { fillStyle: 'transparent' }' line here
-                });
-                World.add(world, body);
-                emojiBodies.set(body, emoji);
+    if(clickCount>=clicksToReveal && !messageRevealed){
+      messageRevealed=true;
+      Promise.race([initOwnerKey(),new Promise(r=>setTimeout(r,300))]).then(()=>{
+        const text=getNextMessage();
+        finalMessage.textContent=text;
+        finalMessage.style.opacity='1';
+        revealSound.currentTime=0; revealSound.play().catch(()=>{});
+      });
+    }
+  }
 
-                if (clickCount === 1) {
-                    instructions.style.transition = 'opacity 0.5s';
-                    instructions.style.opacity = '0';
-                }
+  container.addEventListener('mousedown',e=>addEmoji(e.clientX,e.clientY));
+  container.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    const t=e.touches[0];
+    addEmoji(t.clientX,t.clientY);
+  },{passive:false});
 
-                if (clickCount >= clicksToReveal && !messageRevealed) {
-                    messageRevealed = true;
-
-                    // --- NEW LOGIC TO GET A UNIQUE MESSAGE ---
-                    // 1. Get the last index we showed (or -1 if it's the first time)
-                    let lastIndex = parseInt(localStorage.getItem('lastKissMessageIndex') || '-1', 10);
-
-                    // 2. Get the next index, and loop back to 0 if we're at the end
-                    let nextIndex = lastIndex + 1;
-                    if (nextIndex >= finalMessages.length) {
-                        nextIndex = 0;
-                    }
-
-                    // 3. Save the new index for next time
-                    localStorage.setItem('lastKissMessageIndex', nextIndex.toString());
-
-                    // 4. Get the message and display it
-                    const messageToShow = finalMessages[nextIndex];
-                    finalMessage.innerHTML = messageToShow; // Use innerHTML to allow <br> tags
-
-                    // 5. Show the message box
-                    finalMessage.style.opacity = '1';
-                    revealSound.play().catch(() => {});
-                }
-            }
-
-            container.addEventListener('mousedown', e => addEmoji(e.clientX, e.clientY));
-            container.addEventListener('touchstart', e => {
-                e.preventDefault();
-                const touch = e.touches[0];
-                addEmoji(touch.clientX, touch.clientY);
-            }, { passive: false });
-
-            window.addEventListener('resize', () => location.reload());
-        });
-    </script>
+  window.addEventListener('resize',()=>location.reload());
+});
+</script>
 </body>
 </html>
-
-
-
-
-
