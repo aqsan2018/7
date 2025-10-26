@@ -1,105 +1,325 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const { Engine, Render, Runner, World, Bodies, Body, Events } = Matter;
+  const { Engine, Render, Runner, World, Bodies, Events } = Matter;
 
-    const container = document.getElementById('container');
-    const instructions = document.getElementById('instructions');
-    const finalMessage = document.getElementById('final-message');
-    const clickCounter = document.getElementById('click-counter');
-    const boopSound = document.getElementById('boop-sound');
-    const revealSound = document.getElementById('reveal-sound');
+  // DOM
+  const container = document.getElementById('container');
+  const instructions = document.getElementById('instructions');
+  const finalMessage = document.getElementById('final-message');
+  const clickCounter = document.getElementById('click-counter');
+  const boopSound = document.getElementById('boop-sound');
+  const revealSound = document.getElementById('reveal-sound');
 
-    const worldWidth = window.innerWidth;
-    const worldHeight = window.innerHeight;
-    const emojiSize = 30;
-    const clicksToReveal = 100;
-    let clickCount = 0;
-    let messageRevealed = false;
+  // physics / display config
+  const worldWidth = window.innerWidth;
+  const worldHeight = window.innerHeight;
+  const emojiPx = 48;                 // visual size of emoji PNGs
+  const physicsRadius = emojiPx / 2;  // Matter body radius
+  const clicksToReveal = 100;
 
-    const emojis = ['💋', '❤️', '😘', '💕', '💖', '💞'];
+  // emoji set (we will convert to Twemoji PNGs)
+  const emojiList = ['💋','❤️','😘','💕','💖','💞','😍','💓','❣️','💘','💟','💌'];
 
-    // Matter.js engine setup
-    const engine = Engine.create({ gravity: { y: 0.4 } });
-    const world = engine.world;
+  // messages (example 60 messages - replace or expand as you like)
+  const messages = [
+    "You make my day better.",
+    "Okay, that's cute.",
+    "You're a delight.",
+    "Keep going, I'm listening.",
+    "Stop it, you're sweet.",
+    "I needed that!",
+    "That's one for the books.",
+    "Too charming.",
+    "You're on a roll.",
+    "Swoon-worthy.",
+    "Right in the feels.",
+    "I'm blushing—thanks.",
+    "Who gave you permission?",
+    "Point taken. Come closer.",
+    "You win this round.",
+    "That's my favorite one yet.",
+    "Okay now I'm smiling.",
+    "You and your ways.",
+    "I see you, human.",
+    "All of the heart eyes.",
+    "Please never stop.",
+    "You have impeccable timing.",
+    "If kisses were currency...",
+    "Consider me funded.",
+    "That's a high-quality kiss.",
+    "I approve this message.",
+    "Do it again, slowly.",
+    "Wow. Just—wow.",
+    "Call the orchestra.",
+    "That's the one.",
+    "I owe you a treat now.",
+    "You're uncontrollably cute.",
+    "Heart officially stolen.",
+    "You just raised the stakes.",
+    "I'll remember that.",
+    "This is dangerously adorable.",
+    "Resisting is futile.",
+    "Absolutely legendary.",
+    "Recorded for posterity.",
+    "I might faint. In a good way.",
+    "You broke the cuteness meter.",
+    "My soul just smiled.",
+    "Please put that in writing.",
+    "That's a keeper.",
+    "Bookmarking this feeling.",
+    "You have unlocked happiness.",
+    "Stop — I'm melting.",
+    "That's a masterpiece.",
+    "Cinematic moment.",
+    "You just rewrote the manual.",
+    "Peak affection achieved.",
+    "There should be a trophy.",
+    "My day: made.",
+    "That deserves a parade.",
+    "Thank you, sincere and loud.",
+    "You are very persuasive.",
+    "More please."
+  ];
 
-    // Create renderer (we’ll override drawing)
-    const render = Render.create({
-        element: container,
-        engine: engine,
-        options: {
-            width: worldWidth,
-            height: worldHeight,
-            wireframes: false,
-            background: 'transparent'
-        }
+  // engine + renderer
+  const engine = Engine.create({ gravity: { y: 0.45 }, enableSleeping: true });
+  const world = engine.world;
+
+  const render = Render.create({
+    element: container,
+    engine: engine,
+    options: {
+      width: worldWidth,
+      height: worldHeight,
+      wireframes: false,
+      background: 'transparent'
+    }
+  });
+  Render.run(render);
+  const runner = Runner.create();
+  Runner.run(runner, engine);
+
+  // walls (hidden)
+  const wallOptions = { isStatic: true, render: { visible: false } };
+  World.add(world, [
+    Bodies.rectangle(worldWidth / 2, worldHeight + 30, worldWidth + 100, 60, wallOptions),
+    Bodies.rectangle(-30, worldHeight / 2, 60, worldHeight, wallOptions),
+    Bodies.rectangle(worldWidth + 30, worldHeight / 2, 60, worldHeight, wallOptions)
+  ]);
+
+  // Image cache (emoji PNGs fetched from Twemoji CDN)
+  const imageCache = new Map(); // emoji -> HTMLImageElement
+  const loadingPromises = new Map();
+
+  function emojiToCodePoint(emoji) {
+    // handle multi-codepoint sequences (returns dash-separated lower-case hex)
+    const codePoints = [];
+    for (const ch of [...emoji]) {
+      const cp = ch.codePointAt(0).toString(16);
+      codePoints.push(cp);
+    }
+    return codePoints.join('-');
+  }
+
+  function loadEmojiPNG(emoji) {
+    if (imageCache.has(emoji)) return Promise.resolve(imageCache.get(emoji));
+    if (loadingPromises.has(emoji)) return loadingPromises.get(emoji);
+
+    const code = emojiToCodePoint(emoji);
+    // stable Twemoji PNG path (72x72). Twemoji uses lower-case hex.
+    const url = `https://twemoji.maxcdn.com/v/latest/72x72/${code}.png`;
+
+    const p = new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        imageCache.set(emoji, img);
+        resolve(img);
+      };
+      img.onerror = () => {
+        // fallback: draw using fillText if png fails (rare)
+        console.warn('Twemoji fetch failed for', emoji, 'url', url);
+        imageCache.set(emoji, null);
+        resolve(null);
+      };
+      img.src = url;
     });
-    Render.run(render);
-    const runner = Runner.create();
-    Runner.run(runner, engine);
 
-    // Walls
-    const wallOptions = { isStatic: true, render: { visible: false } };
-    World.add(world, [
-        Bodies.rectangle(worldWidth / 2, worldHeight + 30, worldWidth + 100, 60, wallOptions),
-        Bodies.rectangle(-30, worldHeight / 2, 60, worldHeight, wallOptions),
-        Bodies.rectangle(worldWidth + 30, worldHeight / 2, 60, worldHeight, wallOptions)
-    ]);
+    loadingPromises.set(emoji, p);
+    return p;
+  }
 
-    // Custom rendering hook for emoji
-    const emojiBodies = new Map();
+  // prefetch all emoji PNGs
+  emojiList.forEach(e => loadEmojiPNG(e));
 
-    Events.on(render, 'afterRender', () => {
-        const ctx = render.context;
-        ctx.font = `${emojiSize}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
+  // map body.id -> emoji char
+  const bodyEmoji = new Map();
+
+  // custom afterRender drawing using images (transparent PNGs)
+  Events.on(render, 'afterRender', () => {
+    const ctx = render.context;
+    bodyEmoji.forEach((emoji, bodyId) => {
+      const body = world.bodies.find(b => b.id === bodyId);
+      if (!body) return;
+      const img = imageCache.get(emoji);
+      ctx.save();
+      ctx.translate(body.position.x, body.position.y);
+      ctx.rotate(body.angle);
+      if (img) {
+        // draw centered
+        ctx.drawImage(img, -emojiPx / 2, -emojiPx / 2, emojiPx, emojiPx);
+      } else {
+        // fallback: draw emoji glyph using font (should rarely hit)
+        ctx.font = `${emojiPx}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+        ctx.fillText(emoji, 0, 0);
+      }
+      ctx.restore();
+    });
+  });
 
-        emojiBodies.forEach((emoji, body) => {
-            ctx.save();
-            ctx.translate(body.position.x, body.position.y);
-            ctx.rotate(body.angle);
-            ctx.fillText(emoji, 0, 0);
-            ctx.restore();
-        });
+  // click counter + reveal logic
+  let clickCount = 0;
+  let messageRevealed = false;
+
+  // localStorage keys depend on IP when available
+  const STORAGE_PREFIX = 'kiss_app_';
+  let ownerKey = null; // will be set to STORAGE_PREFIX + hash(ip) or fallback
+
+  // simple hash (djb2) to keep keys short
+  function hashString(s) {
+    let h = 5381;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) + h) + s.charCodeAt(i);
+    return String(h >>> 0);
+  }
+
+  // Attempt to get user's IP (public). If blocked, fallback to 'local'
+  function initOwnerKey() {
+    // Try fetch IP; don't block UI if it takes time. Use a timeout fallback.
+    const ipUrl = 'https://api.ipify.org?format=json';
+    const timeoutMs = 2500;
+
+    return new Promise(resolve => {
+      let done = false;
+      const fallback = () => {
+        if (done) return;
+        done = true;
+        ownerKey = STORAGE_PREFIX + 'local';
+        resolve(ownerKey);
+      };
+
+      // timeout fallback
+      const t = setTimeout(fallback, timeoutMs);
+
+      fetch(ipUrl).then(r => r.json()).then(data => {
+        if (done) return;
+        clearTimeout(t);
+        const ip = (data && data.ip) ? data.ip : 'local';
+        ownerKey = STORAGE_PREFIX + hashString(ip);
+        done = true;
+        resolve(ownerKey);
+      }).catch(() => {
+        clearTimeout(t);
+        fallback();
+      });
+    });
+  }
+
+  // usedIndices stored in localStorage under `${ownerKey}_used` - an array of indices used so far
+  function loadUsedIndices() {
+    try {
+      const raw = localStorage.getItem(ownerKey + '_used');
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr;
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveUsedIndices(arr) {
+    try {
+      localStorage.setItem(ownerKey + '_used', JSON.stringify(arr));
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  function pickNextMessage() {
+    // pick a random message index not yet used for this ownerKey
+    const used = loadUsedIndices();
+    if (used.length >= messages.length) {
+      // all used -> reset
+      used.splice(0, used.length);
+    }
+    const available = [];
+    for (let i = 0; i < messages.length; i++) if (!used.includes(i)) available.push(i);
+    const pick = available[Math.floor(Math.random() * available.length)];
+    used.push(pick);
+    saveUsedIndices(used);
+    return messages[pick];
+  }
+
+  // initialize ownerKey asynchronously; if not ready when reveal happens, fallback to local
+  initOwnerKey().then(() => {
+    // ready
+  });
+
+  // Add an emoji body
+  function addEmoji(x, y) {
+    if (messageRevealed) return;
+
+    clickCount++;
+    clickCounter.textContent = `Kisses: ${clickCount}`;
+
+    boopSound.currentTime = 0;
+    boopSound.play().catch(() => {});
+
+    // pick random emoji char
+    const emoji = emojiList[Math.floor(Math.random() * emojiList.length)];
+
+    // create physics body
+    const body = Bodies.circle(x, y, physicsRadius, {
+      restitution: 0.6,
+      friction: 0.2,
+      density: 0.005
     });
 
-    function addEmoji(x, y) {
-        if (messageRevealed) return;
+    World.add(world, body);
+    bodyEmoji.set(body.id, emoji);
 
-        clickCount++;
-        clickCounter.textContent = `Kisses: ${clickCount}`;
-        boopSound.currentTime = 0;
-        boopSound.play().catch(() => {});
+    // If Twemoji PNG not loaded yet for this emoji, initiate load (non-blocking)
+    loadEmojiPNG(emoji).catch(() => {});
 
-        const emoji = emojis[Math.floor(Math.random() * emojis.length)];
-
-        const body = Bodies.circle(x, y, emojiSize / 2, {
-            restitution: 0.6,
-            friction: 0.3,
-            density: 0.01
-        });
-        World.add(world, body);
-        emojiBodies.set(body, emoji);
-
-        if (clickCount === 1) {
-            instructions.style.transition = 'opacity 0.5s';
-            instructions.style.opacity = '0';
-        }
-
-        if (clickCount >= clicksToReveal && !messageRevealed) {
-            messageRevealed = true;
-            finalMessage.style.opacity = '1';
-            revealSound.play().catch(() => {});
-        }
+    if (clickCount === 1) {
+      instructions.style.transition = 'opacity 0.5s';
+      instructions.style.opacity = '0';
     }
 
-    container.addEventListener('mousedown', e => addEmoji(e.clientX, e.clientY));
-    container.addEventListener('touchstart', e => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        addEmoji(touch.clientX, touch.clientY);
-    }, { passive: false });
+    if (clickCount >= clicksToReveal && !messageRevealed) {
+      messageRevealed = true;
+      // ensure ownerKey available (we may still be waiting on IP) -> if not, ensure initOwnerKey resolves
+      Promise.race([initOwnerKey(), new Promise(r => setTimeout(r, 300))]).then(() => {
+        const text = pickNextMessage();
+        finalMessage.innerHTML = text.replace(/\n/g, '<br>');
+        finalMessage.style.opacity = '1';
+        revealSound.currentTime = 0;
+        revealSound.play().catch(() => {});
+      });
+    }
+  }
 
-    window.addEventListener('resize', () => location.reload());
+  // events
+  container.addEventListener('mousedown', e => addEmoji(e.clientX, e.clientY));
+  container.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const t = e.touches[0];
+    addEmoji(t.clientX, t.clientY);
+  }, { passive: false });
+
+  // resize -> reload (keeps things simple)
+  window.addEventListener('resize', () => location.reload());
 });
 </script>
