@@ -4,254 +4,247 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1, user-scalable=no" />
 <title>Kiss Filler</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💋</text></svg>">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 
 <style>
-  html,body { height:100%; margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial; }
-  body {
-    background:#fce7f3;
-    display:flex; align-items:center; justify-content:center;
-    min-height:100vh; overflow:hidden; touch-action:none;
-  }
-  #container { position:relative; width:100vw; height:100vh; overflow:hidden; }
-  #instructions {
-    position:absolute; top:35%; left:50%; transform:translate(-50%,-50%);
-    font-size:2rem; color:#db2777; text-align:center; font-weight:700; z-index:400;
-    pointer-events:none; user-select:none;
-  }
-  
-  /* --- Updated Final Message styles --- */
-  #final-message {
-    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    z-index:600; pointer-events:none; opacity:0; transition:opacity .4s ease;
-    background:rgba(255,255,255,.6); padding:1.5rem 2rem; border-radius:12px; backdrop-filter:blur(4px);
-    display: flex; flex-direction: column; align-items: center;
-  }
-  #message-text {
-    font-size:2.2rem; color:#be185d; text-align:center; font-weight:700;
-    user-select:none; margin-bottom: 1.5rem;
-  }
-  
-  /* --- New "Play Again" Button Style --- */
-  #play-again-button {
-    pointer-events:all; /* Make button clickable */
-    user-select:none;
-    background-color: #db2777; /* Hot pink */
-    color: white;
-    font-size: 1.2rem;
-    font-weight: 700;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-  }
-  #play-again-button:hover {
-    background-color: #be185d; /* Deeper pink */
-  }
+html,body { height:100%; margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial; }
+body {
+  background:#fce7f3;
+  display:flex; align-items:center; justify-content:center;
+  min-height:100vh; overflow:hidden; touch-action:none;
+}
+#container { position:relative; width:100vw; height:100vh; overflow:hidden; }
+#instructions {
+  position:absolute; top:35%; left:50%; transform:translate(-50%,-50%);
+  font-size:2rem; color:#db2777; text-align:center; font-weight:700; z-index:400;
+  pointer-events:none; user-select:none;
+}
+#final-message {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  z-index:600; pointer-events:none; opacity:0; transition:opacity .4s ease;
+  background:rgba(255,255,255,.6); padding:1.5rem 2rem; border-radius:12px; backdrop-filter:blur(4px);
+  display:flex; flex-direction:column; align-items:center;
+}
+#message-text {
+  font-size:2.2rem; color:#be185d; text-align:center; font-weight:700;
+  user-select:none; margin-bottom:1.5rem;
+}
+#play-again-button {
+  pointer-events:all;
+  background-color:#db2777; color:white; font-size:1.2rem; font-weight:700;
+  padding:0.75rem 1.5rem; border-radius:8px; border:none; cursor:pointer;
+  transition:background-color .3s ease;
+}
+#play-again-button:hover { background-color:#be185d; }
+#click-counter { position:absolute; top:18px; left:18px; font-size:1.2rem; color:#9d174d; z-index:400; user-select:none; }
+canvas { position:absolute; top:0; left:0; z-index:1; pointer-events:none; }
 
-  #click-counter { position:absolute; top:18px; left:18px; font-size:1.2rem; color:#9d174d; z-index:400; user-select:none; }
-  canvas { position:absolute; top:0; left:0; z-index:1; pointer-events:none; }
+/* --- Password overlay styles --- */
+#password-overlay {
+  position:fixed; inset:0;
+  background:rgba(251,207,232,0.8);
+  backdrop-filter:blur(8px);
+  display:flex; align-items:center; justify-content:center;
+  z-index:1000;
+  transition:opacity .5s ease;
+}
+#lock-box {
+  background-color:white;
+  padding:2rem 2.5rem;
+  border-radius:1rem;
+  box-shadow:0 8px 20px rgba(0,0,0,0.2);
+  text-align:center;
+  display:flex; flex-direction:column; align-items:center;
+  animation:fadeIn .8s ease;
+}
+#lock-gif {
+  width:100px; height:100px; margin-bottom:1rem;
+  animation:pulse 1.5s infinite alternate;
+}
+#password-input {
+  font-size:1.1rem;
+  padding:0.6rem 1rem;
+  border:2px solid #f472b6;
+  border-radius:8px;
+  outline:none;
+  text-align:center;
+  margin-bottom:1rem;
+}
+#password-input:focus { border-color:#db2777; }
+#submit-button {
+  background:#db2777; color:white; border:none; font-size:1rem; font-weight:600;
+  padding:0.6rem 1.5rem; border-radius:8px; cursor:pointer;
+  transition:background .3s ease;
+}
+#submit-button:hover { background:#be185d; }
+#error-message {
+  color:#be185d; font-size:0.9rem; height:1rem;
+  margin-top:0.5rem;
+}
+@keyframes shake {
+  0%,100%{transform:translateX(0);} 25%{transform:translateX(-5px);} 75%{transform:translateX(5px);}
+}
+@keyframes fadeIn { from{opacity:0; transform:scale(0.95);} to{opacity:1; transform:scale(1);} }
+@keyframes pulse { from{transform:scale(1);} to{transform:scale(1.08);} }
 </style>
 </head>
-<body>
-  <div id="container">
-    <div id="instructions">I'm feeling a little un-loved.<br>Click to fill me up!</div>
-    
-    <!-- Updated message container -->
-    <div id="final-message">
-        <p id="message-text"></p>
-        <button id="play-again-button">Again</button>
-    </div>
-    
-    <div id="click-counter">Kisses: 0</div>
-  </div>
 
-  <!-- Your uploaded kiss sounds -->
-  <audio id="reveal-sound" src="reveal_ding.mp3" preload="auto"></audio>
+<body>
+<div id="password-overlay">
+  <form id="lock-box">
+    <img id="lock-gif" src="dudu-no-dudu.gif" alt="Lock GIF">
+    <input id="password-input" type="password" placeholder="Enter password">
+    <p id="error-message"></p>
+    <button id="submit-button" type="submit">Unlock</button>
+  </form>
+</div>
+
+<div id="container">
+  <div id="instructions">I'm feeling a little un-loved.<br>Click to fill me up!</div>
+  <div id="final-message">
+    <p id="message-text"></p>
+    <button id="play-again-button">Again</button>
+  </div>
+  <div id="click-counter">Kisses: 0</div>
+</div>
+
+<audio id="reveal-sound" src="reveal_ding.mp3" preload="auto"></audio>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  const { Engine, Render, Runner, World, Bodies, Events, Composite } = Matter; // Added Composite
-  const container = document.getElementById('container');
-  const instructions = document.getElementById('instructions');
-  const finalMessage = document.getElementById('final-message');
-  const messageText = document.getElementById('message-text'); // Get the text element
-  const playAgainButton = document.getElementById('play-again-button'); // Get the button
-  const clickCounter = document.getElementById('click-counter');
-  const revealSound = document.getElementById('reveal-sound');
+  const { Engine, Render, Runner, World, Bodies, Events, Composite } = Matter;
+  const container=document.getElementById('container');
+  const instructions=document.getElementById('instructions');
+  const finalMessage=document.getElementById('final-message');
+  const messageText=document.getElementById('message-text');
+  const playAgainButton=document.getElementById('play-again-button');
+  const clickCounter=document.getElementById('click-counter');
+  const revealSound=document.getElementById('reveal-sound');
 
-  const worldWidth = window.innerWidth;
-  const worldHeight = window.innerHeight;
-  const emojiPx = 56;
-  const physicsRadius = emojiPx / 2;
-  const clicksToReveal = 100;
+  // Lock elements
+  const overlay=document.getElementById('password-overlay');
+  const lockBox=document.getElementById('lock-box');
+  const passInput=document.getElementById('password-input');
+  const errorMsg=document.getElementById('error-message');
+  const submitBtn=document.getElementById('submit-button');
+  const correctPassword="28072018";
 
-  const emojiList = ['💋','❤️','😘'];
+  // Handle lock
+  lockBox.addEventListener('submit',e=>{
+    e.preventDefault();
+    if(passInput.value===correctPassword){
+      overlay.style.opacity='0';
+      setTimeout(()=>overlay.style.display='none',500);
+      initGame();
+    } else {
+      errorMsg.textContent="Wrong password!";
+      lockBox.style.animation='shake 0.4s';
+      setTimeout(()=>lockBox.style.animation='',400);
+    }
+  });
 
-  const messages = [
-    "You make my day better.","Okay, that's cute.","You're a delight.","Keep going, I'm listening.",
-    "Stop it, you're sweet.","I needed that!","That's one for the books.","Too charming.","You're on a roll.",
-    "Swoon-worthy.","Right in the feels.","I'm blushing—thanks.","Who gave you permission?","Point taken. Come closer.",
-    "You win this round.","That's my favorite one yet.","Okay now I'm smiling.","You and your ways.","I see you, human.",
-    "All of the heart eyes.","Please never stop.","You have impeccable timing.","If kisses were currency...",
-    "Consider me funded.","That's a high-quality kiss.","I approve this message.","Do it again, slowly.","Wow. Just—wow.",
-    "Call the orchestra.","That's the one.","I owe you a treat now.","You're uncontrollably cute.","Heart officially stolen.",
-    "You just raised the stakes.","I'll remember that.","This is dangerously adorable.","Resisting is futile.",
-    "Absolutely legendary.","Recorded for posterity.","I might faint. In a good way.","You broke the cuteness meter.",
-    "My soul just smiled.","Please put that in writing.","That's a keeper.","Bookmarking this feeling.",
-    "You have unlocked happiness.","Stop — I'm melting.","That's a masterpiece.","Cinematic moment.",
-    "You just rewrote the manual.","Peak affection achieved.","There should be a trophy.","My day: made.",
-    "That deserves a parade.","Thank you, sincere and loud.","You are very persuasive.","More please."
-  ];
+  function initGame(){
+    const worldWidth=window.innerWidth, worldHeight=window.innerHeight;
+    const emojiPx=56, physicsRadius=emojiPx/2, clicksToReveal=100;
+    const emojiList=['💋','❤️','😘'];
+    const messages=[
+      "You make my day better.","Okay, that's cute.","You're a delight.","Keep going, I'm listening.",
+      "Stop it, you're sweet.","I needed that!","That's one for the books.","Too charming.","You're on a roll.",
+      "Swoon-worthy.","Right in the feels.","I'm blushing—thanks.","Who gave you permission?","Point taken. Come closer.",
+      "You win this round.","That's my favorite one yet.","Okay now I'm smiling.","You and your ways.","I see you, human.",
+      "All of the heart eyes.","Please never stop.","You have impeccable timing.","If kisses were currency...",
+      "Consider me funded.","That's a high-quality kiss.","I approve this message.","Do it again, slowly.","Wow. Just—wow.",
+      "Call the orchestra.","That's the one.","I owe you a treat now.","You're uncontrollably cute.","Heart officially stolen.",
+      "You just raised the stakes.","I'll remember that.","This is dangerously adorable.","Resisting is futile.",
+      "Absolutely legendary.","Recorded for posterity.","I might faint. In a good way.","You broke the cuteness meter.",
+      "My soul just smiled.","Please put that in writing.","That's a keeper.","Bookmarking this feeling.",
+      "You have unlocked happiness.","Stop — I'm melting.","That's a masterpiece.","Cinematic moment.",
+      "You just rewrote the manual.","Peak affection achieved.","There should be a trophy.","My day: made.",
+      "That deserves a parade.","Thank you, sincere and loud.","You are very persuasive.","More please."
+    ];
 
-  // Physics setup
-  const engine = Engine.create({ gravity:{ y:0.45 } });
-  const world = engine.world;
-  const render = Render.create({
-    element:container, engine, options:{ width:worldWidth, height:worldHeight, wireframes:false, background:'transparent' }
-  });
-  Render.run(render);
-  Runner.run(Runner.create(), engine);
-  const wallOpts={isStatic:true,render:{visible:false}};
-  World.add(world,[
-    Bodies.rectangle(worldWidth/2,worldHeight+40,worldWidth+200,80,wallOpts),
-    Bodies.rectangle(-40,worldHeight/2,80,worldHeight,wallOpts),
-    Bodies.rectangle(worldWidth+40,worldHeight/2,80,worldHeight,wallOpts)
-  ]);
+    const engine=Engine.create({gravity:{y:0.45}});
+    const world=engine.world;
+    const render=Render.create({element:container,engine,options:{width:worldWidth,height:worldHeight,wireframes:false,background:'transparent'}});
+    Render.run(render); Runner.run(Runner.create(),engine);
+    const wallOpts={isStatic:true,render:{visible:false}};
+    World.add(world,[
+      Bodies.rectangle(worldWidth/2,worldHeight+40,worldWidth+200,80,wallOpts),
+      Bodies.rectangle(-40,worldHeight/2,80,worldHeight,wallOpts),
+      Bodies.rectangle(worldWidth+40,worldHeight/2,80,worldHeight,wallOpts)
+    ]);
 
-  // Emoji PNG loader
-  const imageCache=new Map();
-  function emojiToCodePoint(e){return Array.from(e).map(c=>c.codePointAt(0).toString(16)).join('-');}
-  function loadEmojiPNG(e){
-    if(imageCache.has(e)) return;
-    const code=emojiToCodePoint(e);
-    const url=`https://twemoji.maxcdn.com/v/latest/72x72/${code}.png`;
-    const img=new Image(); img.crossOrigin='anonymous';
-    img.onload=()=>imageCache.set(e,img);
-    img.onerror=()=>imageCache.set(e,null);
-    img.src=url;
-  }
-  emojiList.forEach(loadEmojiPNG);
-  const bodyEmoji=new Map();
+    const imageCache=new Map(), bodyEmoji=new Map();
+    function emojiToCodePoint(e){return Array.from(e).map(c=>c.codePointAt(0).toString(16)).join('-');}
+    function loadEmojiPNG(e){
+      if(imageCache.has(e))return;
+      const code=emojiToCodePoint(e);
+      const url=`https://twemoji.maxcdn.com/v/latest/72x72/${code}.png`;
+      const img=new Image(); img.crossOrigin='anonymous';
+      img.onload=()=>imageCache.set(e,img);
+      img.onerror=()=>imageCache.set(e,null);
+      img.src=url;
+    }
+    emojiList.forEach(loadEmojiPNG);
+    Events.on(render,'afterRender',()=>{
+      const ctx=render.context;
+      bodyEmoji.forEach((emoji,id)=>{
+        const b=world.bodies.find(bb=>bb.id===id);
+        if(!b)return;
+        ctx.save(); ctx.translate(b.position.x,b.position.y); ctx.rotate(b.angle);
+        const img=imageCache.get(emoji);
+        if(img){ctx.drawImage(img,-emojiPx/2,-emojiPx/2,emojiPx,emojiPx);}
+        else{ctx.font=`${emojiPx}px "Segoe UI Emoji","Apple Color Emoji",sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(emoji,0,0);}
+        ctx.restore();
+      });
+    });
 
-  Events.on(render,'afterRender',()=>{
-    const ctx=render.context;
-    bodyEmoji.forEach((emoji,id)=>{
-      const b=world.bodies.find(bb=>bb.id===id);
-      if(!b) return;
-      ctx.save(); ctx.translate(b.position.x,b.position.y); ctx.rotate(b.angle);
-      const img=imageCache.get(emoji);
-      if(img){ ctx.drawImage(img,-emojiPx/2,-emojiPx/2,emojiPx,emojiPx); }
-      else { ctx.font=`${emojiPx}px "Segoe UI Emoji","Apple Color Emoji",sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(emoji,0,0); }
-      ctx.restore();
-    });
-  });
+    const kissSounds=[new Audio('kiss1.mp3'),new Audio('kiss2.mp3')];
+    let kissIndex=0, clickCount=0, messageRevealed=false;
 
-  // --- Message sequence tracking per IP/device ---
-  const STORAGE_PREFIX='kiss_seq_';
-  let ownerKey=null;
+    function addEmoji(x,y){
+      if(messageRevealed)return;
+      clickCount++;
+      clickCounter.textContent=`Kisses: ${clickCount}`;
+      const s=kissSounds[kissIndex]; s.currentTime=0; s.play().catch(()=>{});
+      kissIndex=(kissIndex+1)%kissSounds.length;
+      const emoji=emojiList[Math.floor(Math.random()*emojiList.length)];
+      const body=Bodies.circle(x,y,physicsRadius,{restitution:0.6,friction:0.2,density:0.005});
+      World.add(world,body); bodyEmoji.set(body.id,emoji);
+      if(clickCount===1){instructions.style.opacity='0';}
+      if(clickCount>=clicksToReveal&&!messageRevealed){
+        messageRevealed=true;
+        const msg=messages[Math.floor(Math.random()*messages.length)];
+        messageText.textContent=msg;
+        finalMessage.style.opacity='1';
+        revealSound.play().catch(()=>{});
+      }
+    }
 
-  function hashString(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)+s.charCodeAt(i);return String(h>>>0);}
-  function initOwnerKey(){
-    return new Promise(res=>{
-      fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>{
-        const ip=d?.ip||'local';
-        ownerKey=STORAGE_PREFIX+hashString(ip);
-        res(ownerKey);
-      }).catch(()=>{ownerKey=STORAGE_PREFIX+'local';res(ownerKey);});
-    });
-  }
+    function resetGame(){
+      finalMessage.style.opacity='0';
+      Composite.clear(world,false);
+      bodyEmoji.clear();
+      World.add(world,[
+        Bodies.rectangle(worldWidth/2,worldHeight+40,worldWidth+200,80,wallOpts),
+        Bodies.rectangle(-40,worldHeight/2,80,worldHeight,wallOpts),
+        Bodies.rectangle(worldWidth+40,worldHeight/2,80,worldHeight,wallOpts)
+      ]);
+      clickCount=0; messageRevealed=false;
+      clickCounter.textContent='Kisses: 0';
+      instructions.style.opacity='1';
+    }
 
-  function loadIndex(){try{return parseInt(localStorage.getItem(ownerKey+'_i'))||0;}catch{return 0;}}
-  function saveIndex(i){try{localStorage.setItem(ownerKey+'_i',String(i));}catch{}}
-
-  function getNextMessage(){
-    let i=loadIndex();
-    const msg=messages[i];
-    i=(i+1)%messages.length;
-    saveIndex(i);
-    return msg;
-  }
-
-  initOwnerKey();
-
-  // --- alternating kiss sounds ---
-  const kissSounds = [
-    new Audio('kiss1.mp3'),
-    new Audio('kiss2.mp3')
-  ];
-  let kissIndex = 0;
-
-  // Clicks and reveal logic
-  let clickCount=0, messageRevealed=false;
-
-  function addEmoji(x,y){
-    if(messageRevealed) return;
-    clickCount++;
-    clickCounter.textContent=`Kisses: ${clickCount}`;
-
-    // Alternate kiss sounds
-    const sound = kissSounds[kissIndex];
-    sound.currentTime = 0;
-    sound.play().catch(() => {});
-    kissIndex = (kissIndex + 1) % kissSounds.length;
-
-    const emoji=emojiList[Math.floor(Math.random()*emojiList.length)];
-    const body=Bodies.circle(x,y,physicsRadius,{restitution:0.6,friction:0.2,density:0.005});
-    World.add(world,body); bodyEmoji.set(body.id,emoji);
-
-    if(clickCount===1){ instructions.style.opacity='0'; }
-
-    if(clickCount>=clicksToReveal && !messageRevealed){
-      messageRevealed=true;
-      Promise.race([initOwnerKey(),new Promise(r=>setTimeout(r,300))]).then(()=>{
-        const text=getNextMessage();
-        messageText.textContent=text; // Set text content
-        finalMessage.style.opacity='1'; // Show message and button
-        revealSound.currentTime=0; revealSound.play().catch(()=>{});
-      });
-    }
-  }
-
-  // --- New Reset Game Function ---
-  function resetGame() {
-    // 1. Hide the message
-    finalMessage.style.opacity = '0';
-    
-    // 2. Clear all emojis from the world
-    Composite.clear(world, false); // Clear non-static bodies
-    bodyEmoji.clear(); // Clear our tracking map
-    
-    // 3. Re-add the walls
-    World.add(world,[
-      Bodies.rectangle(worldWidth/2,worldHeight+40,worldWidth+200,80,wallOpts),
-      Bodies.rectangle(-40,worldHeight/2,80,worldHeight,wallOpts),
-      Bodies.rectangle(worldWidth+40,worldHeight/2,80,worldHeight,wallOpts)
-    ]);
-    
-    // 4. Reset counters
-    clickCount = 0;
-    messageRevealed = false;
-    clickCounter.textContent = 'Kisses: 0';
-    
-    // 5. Show instructions again
-    instructions.style.opacity = '1';
-  }
-
-  // --- Event Listeners ---
-  container.addEventListener('mousedown',e=>addEmoji(e.clientX,e.clientY));
-  container.addEventListener('touchstart',e=>{
-    e.preventDefault();
-    const t=e.touches[0];
-    addEmoji(t.clientX,t.clientY);
-  },{passive:false});
-
-  // Add listener for the new button
-  playAgainButton.addEventListener('click', resetGame);
-
-  window.addEventListener('resize',()=>location.reload());
+    container.addEventListener('mousedown',e=>addEmoji(e.clientX,e.clientY));
+    container.addEventListener('touchstart',e=>{
+      e.preventDefault();
+      const t=e.touches[0]; addEmoji(t.clientX,t.clientY);
+    },{passive:false});
+    playAgainButton.addEventListener('click',resetGame);
+    window.addEventListener('resize',()=>location.reload());
+  }
 });
 </script>
 </body>
