@@ -37,7 +37,7 @@
     <div id="click-counter">Kisses: 0</div>
   </div>
 
-  <audio id="boop-sound" src="boop.mp3" preload="auto"></audio>
+  <!-- Your uploaded kiss sounds -->
   <audio id="reveal-sound" src="reveal_ding.mp3" preload="auto"></audio>
 
 <script>
@@ -47,7 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const instructions = document.getElementById('instructions');
   const finalMessage = document.getElementById('final-message');
   const clickCounter = document.getElementById('click-counter');
-  const boopSound = document.getElementById('boop-sound');
   const revealSound = document.getElementById('reveal-sound');
 
   const worldWidth = window.innerWidth;
@@ -56,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const physicsRadius = emojiPx / 2;
   const clicksToReveal = 100;
 
-  const emojiList = ['💋','❤️','😘'];
+  const emojiList = ['💋','❤️','😘','💕','💖','💞','😍','💓','❣️','💘','💟','💌'];
 
   const messages = [
     "You make my day better.","Okay, that's cute.","You're a delight.","Keep going, I'm listening.",
@@ -143,7 +142,14 @@ document.addEventListener('DOMContentLoaded', () => {
     return msg;
   }
 
-  initOwnerKey(); // start async, will complete quickly
+  initOwnerKey();
+
+  // --- alternating kiss sounds ---
+  const kissSounds = [
+    new Audio('kiss1.mp3'),
+    new Audio('kiss2.mp3')
+  ];
+  let kissIndex = 0;
 
   // Clicks and reveal logic
   let clickCount=0, messageRevealed=false;
@@ -152,7 +158,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if(messageRevealed) return;
     clickCount++;
     clickCounter.textContent=`Kisses: ${clickCount}`;
-    boopSound.currentTime=0; boopSound.play().catch(()=>{});
+
+    // Alternate kiss sounds
+    const sound = kissSounds[kissIndex];
+    sound.currentTime = 0;
+    sound.play().catch(() => {});
+    kissIndex = (kissIndex + 1) % kissSounds.length;
+
     const emoji=emojiList[Math.floor(Math.random()*emojiList.length)];
     const body=Bodies.circle(x,y,physicsRadius,{restitution:0.6,friction:0.2,density:0.005});
     World.add(world,body); bodyEmoji.set(body.id,emoji);
