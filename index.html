@@ -20,12 +20,37 @@
     font-size:2rem; color:#db2777; text-align:center; font-weight:700; z-index:400;
     pointer-events:none; user-select:none;
   }
+  
+  /* --- Updated Final Message styles --- */
   #final-message {
     position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    font-size:2.2rem; color:#be185d; text-align:center; font-weight:700; z-index:600;
-    pointer-events:none; user-select:none; opacity:0; transition:opacity .4s ease;
-    background:rgba(255,255,255,.6); padding:1rem 1.2rem; border-radius:12px; backdrop-filter:blur(4px);
+    z-index:600; pointer-events:none; opacity:0; transition:opacity .4s ease;
+    background:rgba(255,255,255,.6); padding:1.5rem 2rem; border-radius:12px; backdrop-filter:blur(4px);
+    display: flex; flex-direction: column; align-items: center;
   }
+  #message-text {
+    font-size:2.2rem; color:#be185d; text-align:center; font-weight:700;
+    user-select:none; margin-bottom: 1.5rem;
+  }
+  
+  /* --- New "Play Again" Button Style --- */
+  #play-again-button {
+    pointer-events:all; /* Make button clickable */
+    user-select:none;
+    background-color: #db2777; /* Hot pink */
+    color: white;
+    font-size: 1.2rem;
+    font-weight: 700;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  #play-again-button:hover {
+    background-color: #be185d; /* Deeper pink */
+  }
+
   #click-counter { position:absolute; top:18px; left:18px; font-size:1.2rem; color:#9d174d; z-index:400; user-select:none; }
   canvas { position:absolute; top:0; left:0; z-index:1; pointer-events:none; }
 </style>
@@ -33,7 +58,13 @@
 <body>
   <div id="container">
     <div id="instructions">I'm feeling a little un-loved.<br>Click to fill me up!</div>
-    <div id="final-message"></div>
+    
+    <!-- Updated message container -->
+    <div id="final-message">
+        <p id="message-text"></p>
+        <button id="play-again-button">Play Again</button>
+    </div>
+    
     <div id="click-counter">Kisses: 0</div>
   </div>
 
@@ -42,10 +73,12 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  const { Engine, Render, Runner, World, Bodies, Events } = Matter;
+  const { Engine, Render, Runner, World, Bodies, Events, Composite } = Matter; // Added Composite
   const container = document.getElementById('container');
   const instructions = document.getElementById('instructions');
   const finalMessage = document.getElementById('final-message');
+  const messageText = document.getElementById('message-text'); // Get the text element
+  const playAgainButton = document.getElementById('play-again-button'); // Get the button
   const clickCounter = document.getElementById('click-counter');
   const revealSound = document.getElementById('reveal-sound');
 
@@ -175,13 +208,39 @@ document.addEventListener('DOMContentLoaded', () => {
       messageRevealed=true;
       Promise.race([initOwnerKey(),new Promise(r=>setTimeout(r,300))]).then(()=>{
         const text=getNextMessage();
-        finalMessage.textContent=text;
-        finalMessage.style.opacity='1';
+        messageText.textContent=text; // Set text content
+        finalMessage.style.opacity='1'; // Show message and button
         revealSound.currentTime=0; revealSound.play().catch(()=>{});
       });
     }
   }
 
+  // --- New Reset Game Function ---
+  function resetGame() {
+    // 1. Hide the message
+    finalMessage.style.opacity = '0';
+    
+    // 2. Clear all emojis from the world
+    Composite.clear(world, false); // Clear non-static bodies
+    bodyEmoji.clear(); // Clear our tracking map
+    
+    // 3. Re-add the walls
+    World.add(world,[
+      Bodies.rectangle(worldWidth/2,worldHeight+40,worldWidth+200,80,wallOpts),
+      Bodies.rectangle(-40,worldHeight/2,80,worldHeight,wallOpts),
+      Bodies.rectangle(worldWidth+40,worldHeight/2,80,worldHeight,wallOpts)
+    ]);
+    
+    // 4. Reset counters
+    clickCount = 0;
+    messageRevealed = false;
+    clickCounter.textContent = 'Kisses: 0';
+    
+    // 5. Show instructions again
+    instructions.style.opacity = '1';
+  }
+
+  // --- Event Listeners ---
   container.addEventListener('mousedown',e=>addEmoji(e.clientX,e.clientY));
   container.addEventListener('touchstart',e=>{
     e.preventDefault();
@@ -189,8 +248,12 @@ document.addEventListener('DOMContentLoaded', () => {
     addEmoji(t.clientX,t.clientY);
   },{passive:false});
 
+  // Add listener for the new button
+  playAgainButton.addEventListener('click', resetGame);
+
   window.addEventListener('resize',()=>location.reload());
 });
 </script>
 </body>
 </html>
+
