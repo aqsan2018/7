@@ -2,184 +2,196 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+<meta name="viewport" content="width=device-width,initial-scale=1, user-scalable=no" />
 <title>Kiss Filler</title>
-
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💋</text></svg>">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 
 <style>
-  html,body { height:100%; margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial; }
-  body {
-    background:#fce7f3;
-    display:flex; align-items:center; justify-content:center;
-    min-height:100vh; overflow:hidden; touch-action:none;
-  }
-  #container { position:relative; width:100vw; height:100vh; overflow:hidden; }
-  #instructions {
-    position:absolute; top:35%; left:50%; transform:translate(-50%,-50%);
-    font-size:2rem; color:#db2777; text-align:center; font-weight:700; z-index:400;
-    pointer-events:none; user-select:none;
-  }
+html,body { height:100%; margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial; }
+body {
+  background:#fce7f3;
+  display:flex; align-items:center; justify-content:center;
+  min-height:100vh; overflow:hidden; touch-action:none;
+}
+#container { position:relative; width:100vw; height:100vh; overflow:hidden; }
+#instructions {
+  position:absolute; top:35%; left:50%; transform:translate(-50%,-50%);
+  font-size:2rem; color:#db2777; text-align:center; font-weight:700; z-index:400;
+  pointer-events:none; user-select:none;
+}
+#final-message {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  z-index:600; pointer-events:none; opacity:0; transition:opacity .4s ease;
+  background:rgba(255,255,255,.6); padding:1.5rem 2rem; border-radius:12px; backdrop-filter:blur(4px);
+  display:flex; flex-direction:column; align-items:center; max-width:80vw;
+}
+#message-text {
+  font-size:1.5rem; color:#be185d; text-align:center; font-weight:600;
+  user-select:none; margin-bottom:1.5rem; line-height:1.4;
+}
+#play-again-button {
+  pointer-events:all;
+  background-color:#db2777; color:white; font-size:1.1rem; font-weight:700;
+  padding:0.75rem 1.5rem; border-radius:8px; border:none; cursor:pointer;
+  transition:background-color .3s ease;
+}
+#play-again-button:hover { background-color:#be185d; }
+#click-counter { position:absolute; top:18px; left:18px; font-size:1.2rem; color:#9d174d; z-index:400; user-select:none; }
+canvas { position:absolute; top:0; left:0; z-index:1; pointer-events:none; }
 
-  #final-message {
-    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    z-index:600; pointer-events:none; opacity:0; transition:opacity .4s ease;
-    background:rgba(255,255,255,.6); padding:1.5rem 2rem; border-radius:12px; backdrop-filter:blur(4px);
-    display:flex; flex-direction:column; align-items:center; max-width:90%; text-align:center;
-  }
-  #message-text {
-    font-size:1.8rem; color:#be185d; font-weight:700;
-    user-select:none; margin-bottom:1.5rem; line-height:1.4;
-  }
-  #play-again-button {
-    pointer-events:all;
-    background-color:#db2777;
-    color:white; font-size:1.2rem; font-weight:700;
-    padding:0.75rem 1.5rem; border-radius:8px; border:none;
-    cursor:pointer; transition:background-color 0.3s ease;
-  }
-  #play-again-button:hover { background-color:#be185d; }
-  #click-counter { position:absolute; top:18px; left:18px; font-size:1.2rem; color:#9d174d; z-index:400; user-select:none; }
-  canvas { position:absolute; top:0; left:0; z-index:1; pointer-events:none; }
+/* Password overlay */
+#password-overlay {
+  position:fixed; inset:0; background:rgba(251,207,232,0.8);
+  backdrop-filter:blur(8px);
+  display:flex; align-items:center; justify-content:center;
+  z-index:1000;
+  transition:opacity .5s ease;
+}
+#lock-box {
+  background-color:white;
+  padding:2rem 2.5rem;
+  border-radius:1rem;
+  box-shadow:0 8px 20px rgba(0,0,0,0.2);
+  text-align:center;
+  display:flex; flex-direction:column; align-items:center;
+  animation:fadeIn .8s ease;
+}
+#lock-gif {
+  width:100px; height:100px; margin-bottom:1rem;
+  animation:pulse 1.5s infinite alternate;
+}
+#password-input {
+  font-size:1.1rem;
+  padding:0.6rem 1rem;
+  border:2px solid #f472b6;
+  border-radius:8px;
+  outline:none;
+  text-align:center;
+  margin-bottom:1rem;
+}
+#password-input:focus { border-color:#db2777; }
+#submit-button {
+  background:#db2777; color:white; border:none; font-size:1rem; font-weight:600;
+  padding:0.6rem 1.5rem; border-radius:8px; cursor:pointer;
+  transition:background .3s ease;
+}
+#submit-button:hover { background:#be185d; }
+#error-message {
+  color:#be185d; font-size:0.9rem; height:1rem; margin-top:0.5rem;
+}
+@keyframes shake {
+  0%,100%{transform:translateX(0);} 25%{transform:translateX(-5px);} 75%{transform:translateX(5px);}
+}
+@keyframes fadeIn { from{opacity:0; transform:scale(0.95);} to{opacity:1; transform:scale(1);} }
+@keyframes pulse { from{transform:scale(1);} to{transform:scale(1.08);} }
 </style>
 </head>
-<body>
-  <div id="container">
-    <div id="instructions">I'm feeling a little un-loved.<br>Click to fill me up!</div>
-    <div id="final-message">
-      <p id="message-text"></p>
-      <button id="play-again-button">Again</button>
-    </div>
-    <div id="click-counter">Kisses: 0</div>
-  </div>
 
-  <audio id="reveal-sound" src="reveal_ding.mp3" preload="auto"></audio>
+<body>
+<div id="password-overlay">
+  <form id="lock-box">
+    <img id="lock-gif" src="dudu-no-dudu.gif" alt="Lock GIF">
+    <input id="password-input" type="password" placeholder="Enter password">
+    <p id="error-message"></p>
+    <button id="submit-button" type="submit">Unlock</button>
+  </form>
+</div>
+
+<div id="container">
+  <div id="instructions">I'm feeling a little un-loved.<br>Click to fill me up!</div>
+  <div id="final-message">
+    <p id="message-text"></p>
+    <button id="play-again-button">Again</button>
+  </div>
+  <div id="click-counter">Kisses: 0</div>
+</div>
+
+<audio id="reveal-sound" src="reveal_ding.mp3" preload="auto"></audio>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const { Engine, Render, Runner, World, Bodies, Events, Composite } = Matter;
+  const container=document.getElementById('container');
+  const instructions=document.getElementById('instructions');
+  const finalMessage=document.getElementById('final-message');
+  const messageText=document.getElementById('message-text');
+  const playAgainButton=document.getElementById('play-again-button');
+  const clickCounter=document.getElementById('click-counter');
+  const revealSound=document.getElementById('reveal-sound');
 
-  const container = document.getElementById('container');
-  const instructions = document.getElementById('instructions');
-  const finalMessage = document.getElementById('final-message');
-  const messageText = document.getElementById('message-text');
-  const playAgainButton = document.getElementById('play-again-button');
-  const clickCounter = document.getElementById('click-counter');
-  const revealSound = document.getElementById('reveal-sound');
-
-  const worldWidth = window.innerWidth;
-  const worldHeight = window.innerHeight;
-  const emojiPx = 56;
-  const physicsRadius = emojiPx / 2;
-  const clicksToReveal = 100;
-  const emojiList = ['💋','❤️','😘'];
-
-  const messages = [
-    "1. Every kiss you send feels like sunlight warming me from the inside out. I could live in this feeling forever.",
-    "2. You make my heart do that happy little dance it only does for you. Keep those kisses coming.",
-    "3. If affection had a soundtrack, yours would be my favorite song on repeat. Don't ever stop.",
-    "4. Each kiss feels like a promise wrapped in warmth. I never get tired of unwrapping it.",
-    "5. Somehow, you turn simple moments into something that glows. This one shines brightest.",
-    "6. You just made my entire day softer, warmer, and infinitely better. How do you do that?",
-    "7. That one felt like a secret only my heart understood — and it’s not telling.",
-    "8. You have no idea how addictive your kindness is. I'm officially hooked.",
-    "9. If happiness had a texture, it’d feel exactly like this kiss.",
-    "10. You don’t just make me smile; you make my soul stretch out and sigh.",
-    "11. I swear I could bottle this feeling and live off it for years.",
-    "12. Each little kiss lands like a spark — quiet, but impossible to ignore.",
-    "13. I’m convinced you’ve mastered the ancient art of making hearts melt.",
-    "14. That one didn’t just hit — it lingered, like something that refuses to fade.",
-    "15. You know that flutter in your chest? Yeah. You caused it. Again.",
-    "16. This isn’t just cute anymore. It’s dangerously close to perfect.",
-    "17. Somehow your virtual kisses feel like real ones. Explain yourself.",
-    "18. You just gave my serotonin a standing ovation.",
-    "19. Every new one feels like a continuation of a story I never want to end.",
-    "20. You’ve officially made my screen blush.",
-    "21. That kiss was so sweet I think my phone just got cavities.",
-    "22. You’re sending affection like it’s your full-time job — and you’re excellent at it.",
-    "23. The world feels a bit quieter when you do that. Don’t stop.",
-    "24. That one didn’t just land. It stayed.",
-    "25. Somewhere, the universe just took a screenshot of this moment.",
-    "26. You’ve got me smiling like a secret I can’t keep.",
-    "27. There’s something healing about your energy — even through pixels.",
-    "28. That kiss felt like a soft exhale I didn’t know I needed.",
-    "29. I’d say ‘enough kisses,’ but we both know that’s impossible.",
-    "30. Each tap, each kiss — tiny proof that connection is real.",
-    "31. I can’t decide what’s better — your timing or your tenderness.",
-    "32. Somehow, affection through a screen shouldn’t feel this real. Yet, here we are.",
-    "33. Every click adds to a story that’s entirely ours.",
-    "34. That one had extra charm. I can tell you’re showing off now.",
-    "35. Okay, now my heart is just doing laps. Thanks for that.",
-    "36. You’ve turned pixels into feelings. That’s some kind of magic.",
-    "37. Keep this up and I might start believing in fairy tales again.",
-    "38. You just made everything feel softer — again.",
-    "39. That kiss was less a click and more a confession.",
-    "40. You’re easily my favorite notification.",
-    "41. Somehow, you’ve made affection feel new again.",
-    "42. That one deserves applause — or maybe a hug.",
-    "43. I think my heart just learned your rhythm.",
-    "44. You’re dangerously good at this.",
-    "45. If kisses were language, yours would be poetry.",
-    "46. I didn’t expect that one to hit this hard.",
-    "47. You’ve got a way of making the world pause.",
-    "48. That felt like a promise and a memory all at once.",
-    "49. My heart’s officially out of office. You did this.",
-    "50. You ended this round, but you’ve started something bigger — and I love it."
-  ];
-
-  const engine = Engine.create({ gravity:{ y:0.45 } });
-  const world = engine.world;
-  const render = Render.create({
-    element:container, engine, options:{ width:worldWidth, height:worldHeight, wireframes:false, background:'transparent' }
-  });
-  Render.run(render);
-  Runner.run(Runner.create(), engine);
-  const wallOpts={isStatic:true,render:{visible:false}};
-  World.add(world,[
-    Bodies.rectangle(worldWidth/2,worldHeight+40,worldWidth+200,80,wallOpts),
-    Bodies.rectangle(-40,worldHeight/2,80,worldHeight,wallOpts),
-    Bodies.rectangle(worldWidth+40,worldHeight/2,80,worldHeight,wallOpts)
-  ]);
-
-  const imageCache=new Map();
-  function emojiToCodePoint(e){return Array.from(e).map(c=>c.codePointAt(0).toString(16)).join('-');}
-  function loadEmojiPNG(e){
-    if(imageCache.has(e)) return;
-    const code=emojiToCodePoint(e);
-    const url=`https://twemoji.maxcdn.com/v/latest/72x72/${code}.png`;
-    const img=new Image(); img.crossOrigin='anonymous';
-    img.onload=()=>imageCache.set(e,img);
-    img.onerror=()=>imageCache.set(e,null);
-    img.src=url;
-  }
-  emojiList.forEach(loadEmojiPNG);
-  const bodyEmoji=new Map();
-
-  Events.on(render,'afterRender',()=>{
-    const ctx=render.context;
-    bodyEmoji.forEach((emoji,id)=>{
-      const b=world.bodies.find(bb=>bb.id===id);
-      if(!b) return;
-      ctx.save(); ctx.translate(b.position.x,b.position.y); ctx.rotate(b.angle);
-      const img=imageCache.get(emoji);
-      if(img){ ctx.drawImage(img,-emojiPx/2,-emojiPx/2,emojiPx,emojiPx); }
-      else { ctx.font=`${emojiPx}px "Segoe UI Emoji","Apple Color Emoji",sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(emoji,0,0); }
-      ctx.restore();
-    });
-  });
+  const overlay=document.getElementById('password-overlay');
+  const lockBox=document.getElementById('lock-box');
+  const passInput=document.getElementById('password-input');
+  const errorMsg=document.getElementById('error-message');
+  const correctPassword="28072018";
 
   const STORAGE_PREFIX='kiss_seq_';
   let ownerKey=null;
   function hashString(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)+s.charCodeAt(i);return String(h>>>0);}
   function initOwnerKey(){
-    return new Promise(res=>{
-      fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>{
-        const ip=d?.ip||'local'; ownerKey=STORAGE_PREFIX+hashString(ip); res(ownerKey);
-      }).catch(()=>{ownerKey=STORAGE_PREFIX+'local';res(ownerKey);});
-    });
+    return fetch('https://api.ipify.org?format=json')
+      .then(r=>r.json()).then(d=>{
+        const ip=d?.ip||'local';
+        ownerKey=STORAGE_PREFIX+hashString(ip);
+      }).catch(()=>{ownerKey=STORAGE_PREFIX+'local';});
   }
   function loadIndex(){try{return parseInt(localStorage.getItem(ownerKey+'_i'))||0;}catch{return 0;}}
   function saveIndex(i){try{localStorage.setItem(ownerKey+'_i',String(i));}catch{}}
+
+  const messages = [
+"1. You know what I adore most about you?\nThe way your laugh feels like home.\nThe way your eyes calm my chaos.\nYou don’t even try, and yet you mean everything.",
+"2. Sometimes I stop and just smile —\nbecause somehow you exist.\nYou’re like a quiet miracle I get to know.\nAnd I never get used to that feeling.",
+"3. I swear, your presence is like soft sunlight.\nNot blinding, just warm enough to make the world okay again.\nHow do you do that so effortlessly?",
+"4. Every kiss feels like a small promise.\nA quiet way of saying, 'I’m here. I’m not going anywhere.'\nAnd that means more than you realize.",
+"5. You have this calm magic about you.\nEven when the world feels heavy,\nyou make it lighter — just by being near.",
+"6. There’s comfort in your chaos.\nPeace in your laugh.\nAnd a kind of home in your touch\nthat I didn’t even know I was missing.",
+"7. If I could bottle this feeling,\nthis warmth you bring me,\nI’d keep it close forever.\nBecause nothing else compares.",
+"8. You’re not just someone I think about.\nYou’re someone my soul remembers —\nas if it’s known you in another life.",
+"9. There’s something so familiar about you.\nNot your face, not your voice —\nbut the way you make me feel like I’ve finally arrived.",
+"10. You have no idea how much peace you bring.\nIt’s not loud, not forced.\nJust quiet, real, and exactly what I needed.",
+"11. Every time I see your name pop up,\nI smile before I even read it.\nYou’ve become my favorite notification.",
+"12. You’ve ruined ordinary for me.\nNow everything without you feels incomplete,\nlike a song missing its last line.",
+"13. I didn’t know simple things could feel like forever.\nLike laughter shared at midnight,\nor a look that says everything.",
+"14. You make even silence feel full.\nAs if words would only ruin the moment.\nAnd that’s a rare kind of magic.",
+"15. I could write a hundred little poems\nand they’d still fall short\nof what your presence feels like.",
+"16. There’s something about your energy.\nIt doesn’t demand attention — it draws it.\nQuietly. Naturally. Completely.",
+"17. You’ve become a kind of calm for me.\nA reminder that love doesn’t have to shout\nto be felt deeply.",
+"18. You don’t even realize it,\nbut you make everything softer —\nthe days, the hours, even my thoughts.",
+"19. Sometimes I just breathe you in —\nnot literally, but emotionally.\nAnd I feel whole again.",
+"20. You’ve changed the way I look at small moments.\nA glance, a touch, a laugh —\nnow they all feel like stories worth keeping.",
+"21. You’re the reason I started believing\nthat love doesn’t have to hurt.\nIt can be steady, kind, and full of light.",
+"22. I could spend an entire day\njust watching the way you exist in the world.\nEvery small thing you do feels poetic.",
+"23. There’s a stillness when I’m with you.\nLike my heart finally knows it’s safe to rest.",
+"24. You don’t need to do anything to impress me.\nYou being you — that’s already the best part.",
+"25. You’re not the type of beautiful that fades.\nYou’re the kind that grows deeper the longer I know you.",
+"26. You have this way of turning ordinary moments\ninto something I’ll remember forever.",
+"27. You remind me what gentleness feels like.\nNot the soft kind, but the steady, honest kind.",
+"28. It’s strange how someone can become\nboth your peace and your favorite chaos.",
+"29. You’ve made me fall in love\nwith the idea of slowing down —\nof noticing, feeling, being.",
+"30. Every time I think I’ve found your best version,\nyou surprise me again.",
+"31. You feel like a favorite song\nI’ll never skip, no matter how many times it plays.",
+"32. If hearts had playlists,\nyou’d be on repeat.",
+"33. You’re my calm in a crowded room.\nMy quiet in the noise.\nMy reason for softness again.",
+"34. You don’t just fill my days.\nYou give them color, texture, warmth —\nlike sunshine through pink glass.",
+"35. I wish I could let you see yourself\nthrough my eyes for one minute.\nYou’d never doubt your worth again.",
+"36. You’re my favorite kind of distraction —\nthe kind I don’t ever want to escape.",
+"37. I could spend a lifetime learning you,\nand still never get bored.",
+"38. Every time you smile, I remember\nwhy I stopped searching.",
+"39. You make time feel slower —\nlike the world pauses for us to exist in it.",
+"40. I never believed in soul connections\nuntil you showed up\nand made it impossible not to.",
+"41. You’re not just part of my story.\nYou’re the plot twist that made it make sense.",
+"42. You’re proof that love can be both gentle and strong.\nBoth wild and safe.\nBoth now and forever.",
+"43. When you hold space for me,\nit feels like the world finally fits again.",
+"44. You are the poem I didn’t know I was writing\nuntil the words found you.",
+"45. Every kiss is a sentence.\nEvery look, a paragraph.\nEvery silence, a chapter we both understand.",
+"46. You’ve become my favorite place to be —\nnot somewhere, but someone.",
+"47. You’ve turned my ordinary days\ninto a slow, beautiful love story.",
+"48. Sometimes I wonder how I ever existed\nwithout this warmth you bring me.",
+"49. You make love feel effortless —\nas if the universe finally got one thing right.",
+"50. You are the softest yes\nmy heart has ever spoken."
+  ];
+
   function getNextMessage(){
     let i=loadIndex();
     const msg=messages[i];
@@ -187,63 +199,103 @@ document.addEventListener('DOMContentLoaded', () => {
     saveIndex(i);
     return msg;
   }
-  initOwnerKey();
 
-  const kissSounds = [
-    new Audio('kiss1.mp3'),
-    new Audio('kiss2.mp3')
-  ];
-  let kissIndex = 0;
-  let clickCount=0, messageRevealed=false;
-
-  function addEmoji(x,y){
-    if(messageRevealed) return;
-    clickCount++;
-    clickCounter.textContent=`Kisses: ${clickCount}`;
-
-    // --- Play kiss sound instantly even if spammed ---
-    try {
-      const src = kissSounds[kissIndex].src;
-      const clone = new Audio(src);
-      clone.volume = 0.9;
-      clone.play().catch(()=>{});
-    } catch(e){}
-    kissIndex = (kissIndex + 1) % kissSounds.length;
-
-    const emoji = emojiList[Math.floor(Math.random()*emojiList.length)];
-    const body = Bodies.circle(x,y,physicsRadius,{restitution:0.6,friction:0.2,density:0.005});
-    World.add(world,body);
-    bodyEmoji.set(body.id,emoji);
-
-    if(clickCount===1){ instructions.style.opacity='0'; }
-
-    if(clickCount>=clicksToReveal && !messageRevealed){
-      messageRevealed=true;
-      const text=getNextMessage();
-      messageText.textContent=text;
-      finalMessage.style.opacity='1';
-      revealSound.currentTime=0; revealSound.play().catch(()=>{});
+  lockBox.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    if(passInput.value===correctPassword){
+      overlay.style.opacity='0';
+      setTimeout(()=>overlay.style.display='none',500);
+      await initOwnerKey();
+      initGame();
+    } else {
+      errorMsg.textContent="Wrong password!";
+      lockBox.style.animation='shake 0.4s';
+      setTimeout(()=>lockBox.style.animation='',400);
     }
-  }
+  });
 
-  function resetGame(){
-    finalMessage.style.opacity='0';
-    Composite.clear(world,false);
-    bodyEmoji.clear();
+  function initGame(){
+    const worldWidth=window.innerWidth, worldHeight=window.innerHeight;
+    const emojiPx=56, physicsRadius=emojiPx/2, clicksToReveal=50;
+    const emojiList=['💋','❤️','😘'];
+
+    const engine=Engine.create({gravity:{y:0.45}});
+    const world=engine.world;
+    const render=Render.create({element:container,engine,options:{width:worldWidth,height:worldHeight,wireframes:false,background:'transparent'}});
+    Render.run(render); Runner.run(Runner.create(),engine);
+    const wallOpts={isStatic:true,render:{visible:false}};
     World.add(world,[
       Bodies.rectangle(worldWidth/2,worldHeight+40,worldWidth+200,80,wallOpts),
       Bodies.rectangle(-40,worldHeight/2,80,worldHeight,wallOpts),
       Bodies.rectangle(worldWidth+40,worldHeight/2,80,worldHeight,wallOpts)
     ]);
-    clickCount=0; messageRevealed=false;
-    clickCounter.textContent='Kisses: 0';
-    instructions.style.opacity='1';
-  }
 
-  container.addEventListener('mousedown',e=>addEmoji(e.clientX,e.clientY));
-  container.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];addEmoji(t.clientX,t.clientY);},{passive:false});
-  playAgainButton.addEventListener('click',resetGame);
-  window.addEventListener('resize',()=>location.reload());
+    const imageCache=new Map(), bodyEmoji=new Map();
+    function emojiToCodePoint(e){return Array.from(e).map(c=>c.codePointAt(0).toString(16)).join('-');}
+    function loadEmojiPNG(e){
+      if(imageCache.has(e))return;
+      const code=emojiToCodePoint(e);
+      const url=`https://twemoji.maxcdn.com/v/latest/72x72/${code}.png`;
+      const img=new Image(); img.crossOrigin='anonymous';
+      img.onload=()=>imageCache.set(e,img);
+      img.onerror=()=>imageCache.set(e,null);
+      img.src=url;
+    }
+    emojiList.forEach(loadEmojiPNG);
+    Events.on(render,'afterRender',()=>{
+      const ctx=render.context;
+      bodyEmoji.forEach((emoji,id)=>{
+        const b=world.bodies.find(bb=>bb.id===id);
+        if(!b)return;
+        ctx.save(); ctx.translate(b.position.x,b.position.y); ctx.rotate(b.angle);
+        const img=imageCache.get(emoji);
+        if(img){ctx.drawImage(img,-emojiPx/2,-emojiPx/2,emojiPx,emojiPx);}
+        else{ctx.font=`${emojiPx}px "Segoe UI Emoji","Apple Color Emoji",sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(emoji,0,0);}
+        ctx.restore();
+      });
+    });
+
+    const kissSounds=[new Audio('kiss1.mp3'),new Audio('kiss2.mp3')];
+    kissSounds.forEach(s=>{s.preload='auto'; s.load();});
+    let kissIndex=0, clickCount=0, messageRevealed=false;
+
+    function addEmoji(x,y){
+      if(messageRevealed)return;
+      clickCount++;
+      clickCounter.textContent=`Kisses: ${clickCount}`;
+      const sound=kissSounds[kissIndex];
+      try{sound.pause(); sound.currentTime=0; sound.play().catch(()=>{});}catch{}
+      kissIndex=(kissIndex+1)%kissSounds.length;
+
+      const emoji=emojiList[Math.floor(Math.random()*emojiList.length)];
+      const body=Bodies.circle(x,y,physicsRadius,{restitution:0.6,friction:0.2,density:0.005});
+      World.add(world,body); bodyEmoji.set(body.id,emoji);
+      if(clickCount===1){instructions.style.opacity='0';}
+      if(clickCount>=clicksToReveal&&!messageRevealed){
+        messageRevealed=true;
+        const msg=getNextMessage();
+        messageText.textContent=msg;
+        finalMessage.style.opacity='1';
+        revealSound.currentTime=0; revealSound.play().catch(()=>{});
+      }
+    }
+
+    function resetGame(){
+      finalMessage.style.opacity='0';
+      Composite.clear(world,false);
+      bodyEmoji.clear();
+      World.add(world,[
+        Bodies.rectangle(worldWidth/2,worldHeight+40,worldWidth+200,80,wallOpts),
+        Bodies.rectangle(-40,worldHeight/2,80,worldHeight,wallOpts),
+        Bodies.rectangle(worldWidth+40,worldHeight/2,80,worldHeight,wallOpts)
+      ]);
+      clickCount=0; messageRevealed=false;
+      clickCounter.textContent='Kisses: 0';
+    }
+
+    container.addEventListener('click',e=>{const r=container.getBoundingClientRect();addEmoji(e.clientX-r.left,e.clientY-r.top);});
+    playAgainButton.addEventListener('click',resetGame);
+  }
 });
 </script>
 </body>
