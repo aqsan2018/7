@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1, user-scalable=no" />
 <title>Kiss Filler</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💋</text></svg>">
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 
 <style>
@@ -25,15 +24,15 @@ body {
   position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
   z-index:600; pointer-events:none; opacity:0; transition:opacity .4s ease;
   background:rgba(255,255,255,.6); padding:1.5rem 2rem; border-radius:12px; backdrop-filter:blur(4px);
-  display:flex; flex-direction:column; align-items:center;
+  display:flex; flex-direction:column; align-items:center; max-width:80vw;
 }
 #message-text {
-  font-size:2.2rem; color:#be185d; text-align:center; font-weight:700;
-  user-select:none; margin-bottom:1.5rem;
+  font-size:1.5rem; color:#be185d; text-align:center; font-weight:600;
+  user-select:none; margin-bottom:1.5rem; line-height:1.4;
 }
 #play-again-button {
   pointer-events:all;
-  background-color:#db2777; color:white; font-size:1.2rem; font-weight:700;
+  background-color:#db2777; color:white; font-size:1.1rem; font-weight:700;
   padding:0.75rem 1.5rem; border-radius:8px; border:none; cursor:pointer;
   transition:background-color .3s ease;
 }
@@ -41,10 +40,9 @@ body {
 #click-counter { position:absolute; top:18px; left:18px; font-size:1.2rem; color:#9d174d; z-index:400; user-select:none; }
 canvas { position:absolute; top:0; left:0; z-index:1; pointer-events:none; }
 
-/* --- Password overlay styles --- */
+/* Password overlay */
 #password-overlay {
-  position:fixed; inset:0;
-  background:rgba(251,207,232,0.8);
+  position:fixed; inset:0; background:rgba(251,207,232,0.8);
   backdrop-filter:blur(8px);
   display:flex; align-items:center; justify-content:center;
   z-index:1000;
@@ -80,8 +78,7 @@ canvas { position:absolute; top:0; left:0; z-index:1; pointer-events:none; }
 }
 #submit-button:hover { background:#be185d; }
 #error-message {
-  color:#be185d; font-size:0.9rem; height:1rem;
-  margin-top:0.5rem;
+  color:#be185d; font-size:0.9rem; height:1rem; margin-top:0.5rem;
 }
 @keyframes shake {
   0%,100%{transform:translateX(0);} 25%{transform:translateX(-5px);} 75%{transform:translateX(5px);}
@@ -123,20 +120,92 @@ document.addEventListener('DOMContentLoaded', () => {
   const clickCounter=document.getElementById('click-counter');
   const revealSound=document.getElementById('reveal-sound');
 
-  // Lock elements
   const overlay=document.getElementById('password-overlay');
   const lockBox=document.getElementById('lock-box');
   const passInput=document.getElementById('password-input');
   const errorMsg=document.getElementById('error-message');
-  const submitBtn=document.getElementById('submit-button');
   const correctPassword="28072018";
 
-  // Handle lock
-  lockBox.addEventListener('submit',e=>{
+  const STORAGE_PREFIX='kiss_seq_';
+  let ownerKey=null;
+  function hashString(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)+s.charCodeAt(i);return String(h>>>0);}
+  function initOwnerKey(){
+    return fetch('https://api.ipify.org?format=json')
+      .then(r=>r.json()).then(d=>{
+        const ip=d?.ip||'local';
+        ownerKey=STORAGE_PREFIX+hashString(ip);
+      }).catch(()=>{ownerKey=STORAGE_PREFIX+'local';});
+  }
+  function loadIndex(){try{return parseInt(localStorage.getItem(ownerKey+'_i'))||0;}catch{return 0;}}
+  function saveIndex(i){try{localStorage.setItem(ownerKey+'_i',String(i));}catch{}}
+
+  const messages = [
+"1. You know what I adore most about you?\nThe way your laugh feels like home.\nThe way your eyes calm my chaos.\nYou don’t even try, and yet you mean everything.",
+"2. Sometimes I stop and just smile —\nbecause somehow you exist.\nYou’re like a quiet miracle I get to know.\nAnd I never get used to that feeling.",
+"3. I swear, your presence is like soft sunlight.\nNot blinding, just warm enough to make the world okay again.\nHow do you do that so effortlessly?",
+"4. Every kiss feels like a small promise.\nA quiet way of saying, 'I’m here. I’m not going anywhere.'\nAnd that means more than you realize.",
+"5. You have this calm magic about you.\nEven when the world feels heavy,\nyou make it lighter — just by being near.",
+"6. There’s comfort in your chaos.\nPeace in your laugh.\nAnd a kind of home in your touch\nthat I didn’t even know I was missing.",
+"7. If I could bottle this feeling,\nthis warmth you bring me,\nI’d keep it close forever.\nBecause nothing else compares.",
+"8. You’re not just someone I think about.\nYou’re someone my soul remembers —\nas if it’s known you in another life.",
+"9. There’s something so familiar about you.\nNot your face, not your voice —\nbut the way you make me feel like I’ve finally arrived.",
+"10. You have no idea how much peace you bring.\nIt’s not loud, not forced.\nJust quiet, real, and exactly what I needed.",
+"11. Every time I see your name pop up,\nI smile before I even read it.\nYou’ve become my favorite notification.",
+"12. You’ve ruined ordinary for me.\nNow everything without you feels incomplete,\nlike a song missing its last line.",
+"13. I didn’t know simple things could feel like forever.\nLike laughter shared at midnight,\nor a look that says everything.",
+"14. You make even silence feel full.\nAs if words would only ruin the moment.\nAnd that’s a rare kind of magic.",
+"15. I could write a hundred little poems\nand they’d still fall short\nof what your presence feels like.",
+"16. There’s something about your energy.\nIt doesn’t demand attention — it draws it.\nQuietly. Naturally. Completely.",
+"17. You’ve become a kind of calm for me.\nA reminder that love doesn’t have to shout\nto be felt deeply.",
+"18. You don’t even realize it,\nbut you make everything softer —\nthe days, the hours, even my thoughts.",
+"19. Sometimes I just breathe you in —\nnot literally, but emotionally.\nAnd I feel whole again.",
+"20. You’ve changed the way I look at small moments.\nA glance, a touch, a laugh —\nnow they all feel like stories worth keeping.",
+"21. You’re the reason I started believing\nthat love doesn’t have to hurt.\nIt can be steady, kind, and full of light.",
+"22. I could spend an entire day\njust watching the way you exist in the world.\nEvery small thing you do feels poetic.",
+"23. There’s a stillness when I’m with you.\nLike my heart finally knows it’s safe to rest.",
+"24. You don’t need to do anything to impress me.\nYou being you — that’s already the best part.",
+"25. You’re not the type of beautiful that fades.\nYou’re the kind that grows deeper the longer I know you.",
+"26. You have this way of turning ordinary moments\ninto something I’ll remember forever.",
+"27. You remind me what gentleness feels like.\nNot the soft kind, but the steady, honest kind.",
+"28. It’s strange how someone can become\nboth your peace and your favorite chaos.",
+"29. You’ve made me fall in love\nwith the idea of slowing down —\nof noticing, feeling, being.",
+"30. Every time I think I’ve found your best version,\nyou surprise me again.",
+"31. You feel like a favorite song\nI’ll never skip, no matter how many times it plays.",
+"32. If hearts had playlists,\nyou’d be on repeat.",
+"33. You’re my calm in a crowded room.\nMy quiet in the noise.\nMy reason for softness again.",
+"34. You don’t just fill my days.\nYou give them color, texture, warmth —\nlike sunshine through pink glass.",
+"35. I wish I could let you see yourself\nthrough my eyes for one minute.\nYou’d never doubt your worth again.",
+"36. You’re my favorite kind of distraction —\nthe kind I don’t ever want to escape.",
+"37. I could spend a lifetime learning you,\nand still never get bored.",
+"38. Every time you smile, I remember\nwhy I stopped searching.",
+"39. You make time feel slower —\nlike the world pauses for us to exist in it.",
+"40. I never believed in soul connections\nuntil you showed up\nand made it impossible not to.",
+"41. You’re not just part of my story.\nYou’re the plot twist that made it make sense.",
+"42. You’re proof that love can be both gentle and strong.\nBoth wild and safe.\nBoth now and forever.",
+"43. When you hold space for me,\nit feels like the world finally fits again.",
+"44. You are the poem I didn’t know I was writing\nuntil the words found you.",
+"45. Every kiss is a sentence.\nEvery look, a paragraph.\nEvery silence, a chapter we both understand.",
+"46. You’ve become my favorite place to be —\nnot somewhere, but someone.",
+"47. You’ve turned my ordinary days\ninto a slow, beautiful love story.",
+"48. Sometimes I wonder how I ever existed\nwithout this warmth you bring me.",
+"49. You make love feel effortless —\nas if the universe finally got one thing right.",
+"50. You are the softest yes\nmy heart has ever spoken."
+  ];
+
+  function getNextMessage(){
+    let i=loadIndex();
+    const msg=messages[i];
+    i=(i+1)%messages.length;
+    saveIndex(i);
+    return msg;
+  }
+
+  lockBox.addEventListener('submit', async (e)=>{
     e.preventDefault();
     if(passInput.value===correctPassword){
       overlay.style.opacity='0';
       setTimeout(()=>overlay.style.display='none',500);
+      await initOwnerKey();
       initGame();
     } else {
       errorMsg.textContent="Wrong password!";
@@ -149,21 +218,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const worldWidth=window.innerWidth, worldHeight=window.innerHeight;
     const emojiPx=56, physicsRadius=emojiPx/2, clicksToReveal=100;
     const emojiList=['💋','❤️','😘'];
-    const messages=[
-      "You make my day better.","Okay, that's cute.","You're a delight.","Keep going, I'm listening.",
-      "Stop it, you're sweet.","I needed that!","That's one for the books.","Too charming.","You're on a roll.",
-      "Swoon-worthy.","Right in the feels.","I'm blushing—thanks.","Who gave you permission?","Point taken. Come closer.",
-      "You win this round.","That's my favorite one yet.","Okay now I'm smiling.","You and your ways.","I see you, human.",
-      "All of the heart eyes.","Please never stop.","You have impeccable timing.","If kisses were currency...",
-      "Consider me funded.","That's a high-quality kiss.","I approve this message.","Do it again, slowly.","Wow. Just—wow.",
-      "Call the orchestra.","That's the one.","I owe you a treat now.","You're uncontrollably cute.","Heart officially stolen.",
-      "You just raised the stakes.","I'll remember that.","This is dangerously adorable.","Resisting is futile.",
-      "Absolutely legendary.","Recorded for posterity.","I might faint. In a good way.","You broke the cuteness meter.",
-      "My soul just smiled.","Please put that in writing.","That's a keeper.","Bookmarking this feeling.",
-      "You have unlocked happiness.","Stop — I'm melting.","That's a masterpiece.","Cinematic moment.",
-      "You just rewrote the manual.","Peak affection achieved.","There should be a trophy.","My day: made.",
-      "That deserves a parade.","Thank you, sincere and loud.","You are very persuasive.","More please."
-    ];
 
     const engine=Engine.create({gravity:{y:0.45}});
     const world=engine.world;
@@ -202,24 +256,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const kissSounds=[new Audio('kiss1.mp3'),new Audio('kiss2.mp3')];
+    kissSounds.forEach(s=>{s.preload='auto'; s.load();});
     let kissIndex=0, clickCount=0, messageRevealed=false;
 
     function addEmoji(x,y){
       if(messageRevealed)return;
       clickCount++;
       clickCounter.textContent=`Kisses: ${clickCount}`;
-      const s=kissSounds[kissIndex]; s.currentTime=0; s.play().catch(()=>{});
+      const sound=kissSounds[kissIndex];
+      try{sound.pause(); sound.currentTime=0; sound.play().catch(()=>{});}catch{}
       kissIndex=(kissIndex+1)%kissSounds.length;
+
       const emoji=emojiList[Math.floor(Math.random()*emojiList.length)];
       const body=Bodies.circle(x,y,physicsRadius,{restitution:0.6,friction:0.2,density:0.005});
       World.add(world,body); bodyEmoji.set(body.id,emoji);
       if(clickCount===1){instructions.style.opacity='0';}
       if(clickCount>=clicksToReveal&&!messageRevealed){
         messageRevealed=true;
-        const msg=messages[Math.floor(Math.random()*messages.length)];
+        const msg=getNextMessage();
         messageText.textContent=msg;
         finalMessage.style.opacity='1';
-        revealSound.play().catch(()=>{});
+        revealSound.currentTime=0; revealSound.play().catch(()=>{});
       }
     }
 
@@ -234,16 +291,10 @@ document.addEventListener('DOMContentLoaded', () => {
       ]);
       clickCount=0; messageRevealed=false;
       clickCounter.textContent='Kisses: 0';
-      instructions.style.opacity='1';
     }
 
-    container.addEventListener('mousedown',e=>addEmoji(e.clientX,e.clientY));
-    container.addEventListener('touchstart',e=>{
-      e.preventDefault();
-      const t=e.touches[0]; addEmoji(t.clientX,t.clientY);
-    },{passive:false});
+    container.addEventListener('click',e=>{const r=container.getBoundingClientRect();addEmoji(e.clientX-r.left,e.clientY-r.top);});
     playAgainButton.addEventListener('click',resetGame);
-    window.addEventListener('resize',()=>location.reload());
   }
 });
 </script>
