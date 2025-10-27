@@ -4,256 +4,453 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1, user-scalable=no" />
 <title>Kiss Filler</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💋</text></svg>">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
-  html,body { height:100%; margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial; }
-  body {
-    background:#fce7f3;
-    display:flex; align-items:center; justify-content:center;
-    min-height:100vh; overflow:hidden; touch-action:none;
+  html,body { height:100%; margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial; }
+  body {
+    background:#fce7f3; /* Light pink background */
+    display:flex; align-items:center; justify-content:center;
+    min-height:100vh; /* overflow:hidden is removed for scrolling */
+    touch-action:none;
+  }
+  
+  /* --- Main Content Container (Hidden by default) --- */
+  #main-content {
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.5s ease-in;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
   }
-  #container { position:relative; width:100vw; height:100vh; overflow:hidden; }
-  #instructions {
-    position:absolute; top:35%; left:50%; transform:translate(-50%,-50%);
-    font-size:2rem; color:#db2777; text-align:center; font-weight:700; z-index:400;
-    pointer-events:none; user-select:none;
+  #main-content.visible {
+       visibility: visible;
+       opacity: 1;
   }
   
-  /* --- Updated Final Message styles --- */
-  #final-message {
-    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    z-index:600; pointer-events:none; opacity:0; transition:opacity .4s ease;
-    background:rgba(255,255,255,.6); padding:1.5rem 2rem; border-radius:12px; backdrop-filter:blur(4px);
-    display: flex; flex-direction: column; align-items: center;
-  }
-  #message-text {
-    font-size:2.2rem; color:#be185d; text-align:center; font-weight:700;
-    user-select:none; margin-bottom: 1.5rem;
-  }
-  
-  /* --- New "Play Again" Button Style --- */
-  #play-again-button {
-    pointer-events:all; /* Make button clickable */
-    user-select:none;
-    background-color: #db2777; /* Hot pink */
-    color: white;
-    font-size: 1.2rem;
-    font-weight: 700;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-  }
-  #play-again-button:hover {
-    background-color: #be185d; /* Deeper pink */
-  }
+  /* Original Game Styles */
+  #container { position:relative; width:100vw; height:100vh; overflow:hidden; }
+  #instructions {
+    position:absolute; top:35%; left:50%; transform:translate(-50%,-50%);
+    font-size:2rem; color:#db2777; text-align:center; font-weight:700; z-index:400;
+    pointer-events:none; user-select:none;
+  }
+  
+  /* --- Updated Final Message styles --- */
+  #final-message {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    z-index:600; pointer-events:none; opacity:0; transition:opacity .4s ease;
+    background:rgba(255,255,255,.6); padding:1.5rem 2rem; border-radius:12px; backdrop-filter:blur(4px);
+    display: flex; flex-direction: column; align-items: center;
+  }
+  #message-text {
+    font-size:2.2rem; color:#be185d; text-align:center; font-weight:700;
+    user-select:none; margin-bottom: 1.5rem;
+  }
+  
+  /* --- New "Play Again" Button Style --- */
+  #play-again-button {
+    pointer-events:all; /* Make button clickable */
+    user-select:none;
+    background-color: #db2777; /* Hot pink */
+    color: white;
+    font-size: 1.2rem;
+    font-weight: 700;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  #play-again-button:hover {
+    background-color: #be185d; /* Deeper pink */
+  }
 
-  #click-counter { position:absolute; top:18px; left:18px; font-size:1.2rem; color:#9d174d; z-index:400; user-select:none; }
-  canvas { position:absolute; top:0; left:0; z-index:1; pointer-events:none; }
+  #click-counter { position:absolute; top:18px; left:18px; font-size:1.2rem; color:#9d174d; z-index:400; user-select:none; }
+  canvas { position:absolute; top:0; left:0; z-index:1; pointer-events:none; }
+  
+  /* --- NEW Password Lock Styles (Pink Theme) --- */
+  #password-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(255, 192, 203, 0.65); /* Pink overlay */
+      backdrop-filter: blur(8px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000; /* Highest z-index */
+      transition: opacity 0.3s ease-out;
+  }
+  
+  #lock-box {
+      background-color: white; /* White box */
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      text-align: center;
+      width: 90%; 
+      max-width: 320px; 
+      display: flex; 
+      flex-direction: column;
+      align-items: center;
+      box-sizing: border-box;
+  }
+  
+  #lock-gif {
+      width: 150px;
+      height: 150px;
+      border-radius: 0.75rem;
+      margin-bottom: 1.5rem;
+      margin-left: auto;
+      margin-right: auto;
+  }
+  
+  #password-input {
+      font-family: 'Orbitron', sans-serif;
+      width: 100%; 
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      border: 2px solid #fbcfe8; /* Light pink border */
+      background-color: #fdf2f8; /* Very light pink bg */
+      color: #4b5563; /* Dark text */
+      font-size: 1.1rem;
+      text-align: center;
+      letter-spacing: 2px;
+      box-sizing: border-box; 
+  }
+  
+  #password-input:focus {
+      outline: none;
+      border-color: #ec4899; /* Hot pink border on focus */
+  }
+  
+  #submit-button {
+      font-family: 'Orbitron', sans-serif;
+      width: 100%; 
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      background-color: #ec4899; /* Hot pink */
+      color: white;
+      font-weight: 700;
+      margin-top: 1rem;
+      transition: background-color 0.2s ease;
+      border: none;
+      cursor: pointer; 
+      box-sizing: border-box; 
+  }
+  
+  #submit-button:hover {
+      background-color: #db2777; /* Deeper pink */
+  }
+  
+  #error-message {
+      color: #ef4444; /* Red */
+      font-size: 0.9rem;
+      height: 1.25rem; /* Reserve space */
+      margin-top: 0.75rem;
+  }
+  
+  /* Shake animation for wrong password */
+  @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-8px); }
+      75% { transform: translateX(8px); }
+  }
+  
+  .shake {
+      animation: shake 0.3s ease-in-out;
+  }
+  /* --- End Password Lock Styles --- */
 </style>
 </head>
 <body>
-  <div id="container">
-    <div id="instructions">I'm feeling a little un-loved.<br>Click to fill me up!</div>
-    
-    <!-- Updated message container -->
-    <div id="final-message">
-        <p id="message-text"></p>
-        <button id="play-again-button">Again</button>
+  
+  <!-- --- NEW Password Overlay --- -->
+  <div id="password-overlay">
+      <form id="lock-box">
+          <img id="lock-gif" src="dudu-no-dudu.gif" alt="Dudu Bubu No">
+          <input id="password-input" type="password" placeholder="Enter Password">
+          <p id="error-message"></p>
+          <button id="submit-button" type="submit">Unlock</button>
+      </form>
+  </div>
+  
+  <!-- --- Main Content Wrapper (Hidden by default) --- -->
+  <div id="main-content">
+    <div id="container">
+      <div id="instructions">I'm feeling a little un-loved.<br>Click to fill me up!</div>
+      
+      <!-- Updated message container -->
+      <div id="final-message">
+          <p id="message-text"></p>
+          <button id="play-again-button">Again</button>
+      </div>
+      
+      <div id="click-counter">Kisses: 0</div>
     </div>
-    
-    <div id="click-counter">Kisses: 0</div>
   </div>
 
-  <!-- Your uploaded kiss sounds -->
-  <audio id="reveal-sound" src="reveal_ding.mp3" preload="auto"></audio>
+  <!-- Your uploaded kiss sounds -->
+  <audio id="reveal-sound" src="reveal_ding.mp3" preload="auto"></audio>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  const { Engine, Render, Runner, World, Bodies, Events, Composite } = Matter; // Added Composite
-  const container = document.getElementById('container');
-  const instructions = document.getElementById('instructions');
-  const finalMessage = document.getElementById('final-message');
-  const messageText = document.getElementById('message-text'); // Get the text element
-  const playAgainButton = document.getElementById('play-again-button'); // Get the button
-  const clickCounter = document.getElementById('click-counter');
-  const revealSound = document.getElementById('reveal-sound');
-
+  // --- Password Lock Elements ---
+  const passwordOverlay = document.getElementById('password-overlay');
+  const lockBox = document.getElementById('lock-box');
+  const passwordInput = document.getElementById('password-input');
+  const errorMessage = document.getElementById('error-message');
+  const mainContent = document.getElementById('main-content');
+  const correctPassword = "28072018";
+  
+  // --- Game Elements (Declared Here) ---
+  const container = document.getElementById('container');
+  const instructions = document.getElementById('instructions');
+  const finalMessage = document.getElementById('final-message');
+  const messageText = document.getElementById('message-text');
+  const playAgainButton = document.getElementById('play-again-button');
+  const clickCounter = document.getElementById('click-counter');
+  const revealSound = document.getElementById('reveal-sound');
+  
+  // --- Game Variables ---
+  const { Engine, Render, Runner, World, Bodies, Events, Composite } = Matter;
   const worldWidth = window.innerWidth;
-  const worldHeight = window.innerHeight;
-  const emojiPx = 56;
-  const physicsRadius = emojiPx / 2;
-  const clicksToReveal = 100;
+  const worldHeight = window.innerHeight;
+  const emojiPx = 56;
+  const physicsRadius = emojiPx / 2;
+  const clicksToReveal = 100;
 
-  const emojiList = ['💋','❤️','😘'];
-
+  const emojiList = ['💋','❤️','😘'];
   const messages = [
-    "You make my day better.","Okay, that's cute.","You're a delight.","Keep going, I'm listening.",
-    "Stop it, you're sweet.","I needed that!","That's one for the books.","Too charming.","You're on a roll.",
-    "Swoon-worthy.","Right in the feels.","I'm blushing—thanks.","Who gave you permission?","Point taken. Come closer.",
-    "You win this round.","That's my favorite one yet.","Okay now I'm smiling.","You and your ways.","I see you, human.",
-    "All of the heart eyes.","Please never stop.","You have impeccable timing.","If kisses were currency...",
-    "Consider me funded.","That's a high-quality kiss.","I approve this message.","Do it again, slowly.","Wow. Just—wow.",
-    "Call the orchestra.","That's the one.","I owe you a treat now.","You're uncontrollably cute.","Heart officially stolen.",
-    "You just raised the stakes.","I'll remember that.","This is dangerously adorable.","Resisting is futile.",
-    "Absolutely legendary.","Recorded for posterity.","I might faint. In a good way.","You broke the cuteness meter.",
-    "My soul just smiled.","Please put that in writing.","That's a keeper.","Bookmarking this feeling.",
-    "You have unlocked happiness.","Stop — I'm melting.","That's a masterpiece.","Cinematic moment.",
-    "You just rewrote the manual.","Peak affection achieved.","There should be a trophy.","My day: made.",
-    "That deserves a parade.","Thank you, sincere and loud.","You are very persuasive.","More please."
-  ];
-
-  // Physics setup
-  const engine = Engine.create({ gravity:{ y:0.45 } });
-  const world = engine.world;
-  const render = Render.create({
-    element:container, engine, options:{ width:worldWidth, height:worldHeight, wireframes:false, background:'transparent' }
-  });
-  Render.run(render);
-  Runner.run(Runner.create(), engine);
-  const wallOpts={isStatic:true,render:{visible:false}};
-  World.add(world,[
-    Bodies.rectangle(worldWidth/2,worldHeight+40,worldWidth+200,80,wallOpts),
-    Bodies.rectangle(-40,worldHeight/2,80,worldHeight,wallOpts),
-    Bodies.rectangle(worldWidth+40,worldHeight/2,80,worldHeight,wallOpts)
-  ]);
-
-  // Emoji PNG loader
-  const imageCache=new Map();
-  function emojiToCodePoint(e){return Array.from(e).map(c=>c.codePointAt(0).toString(16)).join('-');}
-  function loadEmojiPNG(e){
-    if(imageCache.has(e)) return;
-    const code=emojiToCodePoint(e);
-    const url=`https://twemoji.maxcdn.com/v/latest/72x72/${code}.png`;
-    const img=new Image(); img.crossOrigin='anonymous';
-    img.onload=()=>imageCache.set(e,img);
-    img.onerror=()=>imageCache.set(e,null);
-    img.src=url;
-  }
-  emojiList.forEach(loadEmojiPNG);
-  const bodyEmoji=new Map();
-
-  Events.on(render,'afterRender',()=>{
-    const ctx=render.context;
-    bodyEmoji.forEach((emoji,id)=>{
-      const b=world.bodies.find(bb=>bb.id===id);
-      if(!b) return;
-      ctx.save(); ctx.translate(b.position.x,b.position.y); ctx.rotate(b.angle);
-      const img=imageCache.get(emoji);
-      if(img){ ctx.drawImage(img,-emojiPx/2,-emojiPx/2,emojiPx,emojiPx); }
-      else { ctx.font=`${emojiPx}px "Segoe UI Emoji","Apple Color Emoji",sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(emoji,0,0); }
-      ctx.restore();
-    });
-  });
-
-  // --- Message sequence tracking per IP/device ---
-  const STORAGE_PREFIX='kiss_seq_';
-  let ownerKey=null;
-
-  function hashString(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)+s.charCodeAt(i);return String(h>>>0);}
-  function initOwnerKey(){
-    return new Promise(res=>{
-      fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>{
-        const ip=d?.ip||'local';
-        ownerKey=STORAGE_PREFIX+hashString(ip);
-        res(ownerKey);
-      }).catch(()=>{ownerKey=STORAGE_PREFIX+'local';res(ownerKey);});
-    });
-  }
-
-  function loadIndex(){try{return parseInt(localStorage.getItem(ownerKey+'_i'))||0;}catch{return 0;}}
-  function saveIndex(i){try{localStorage.setItem(ownerKey+'_i',String(i));}catch{}}
-
-  function getNextMessage(){
-    let i=loadIndex();
-    const msg=messages[i];
-    i=(i+1)%messages.length;
-    saveIndex(i);
-    return msg;
-  }
-
-  initOwnerKey();
-
-  // --- alternating kiss sounds ---
-  const kissSounds = [
-    new Audio('kiss1.mp3'),
-    new Audio('kiss2.mp3')
-  ];
+    "You make my day better.","Okay, that's cute.","You're a delight.","Keep going, I'm listening.",
+    "Stop it, you're sweet.","I needed that!","That's one for the books.","Too charming.","You're on a roll.",
+    "Swoon-worthy.","Right in the feels.","I'm blushing—thanks.","Who gave you permission?","Point taken. Come closer.",
+    "You win this round.","That's my favorite one yet.","Okay now I'm smiling.","You and your ways.","I see you, human.",
+    "All of the heart eyes.","Please never stop.","You have impeccable timing.","If kisses were currency...",
+    "Consider me funded.","That's a high-quality kiss.","I approve this message.","Do it again, slowly.","Wow. Just—wow.",
+    "Call the orchestra.","That's the one.","I owe you a treat now.","You're uncontrollably cute.","Heart officially stolen.",
+    "You just raised the stakes.","I'll remember that.","This is dangerously adorable.","Resisting is futile.",
+    "Absolutely legendary.","Recorded for posterity.","I might faint. In a good way.","You broke the cuteness meter.",
+    "My soul just smiled.","Please put that in writing.","That's a keeper.","Bookmarking this feeling.",
+    "You have unlocked happiness.","Stop — I'm melting.","That's a masterpiece.","Cinematic moment.",
+    "You just rewrote the manual.","Peak affection achieved.","There should be a trophy.","My day: made.",
+    "That deserves a parade.","Thank you, sincere and loud.","You are very persuasive.","More please."
+  ];
+  
+  let engine, world, render, bodyEmoji; // Physics global variables
+  let clickCount, messageRevealed;
   let kissIndex = 0;
+  let ownerKey = null;
 
-  // Clicks and reveal logic
-  let clickCount=0, messageRevealed=false;
+  // --- Message sequence tracking per IP/device ---
+  const STORAGE_PREFIX='kiss_seq_';
+  function hashString(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)+s.charCodeAt(i);return String(h>>>0);}
+  function initOwnerKey(){
+    return new Promise(res=>{
+      fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>{
+        const ip=d?.ip||'local';
+        ownerKey=STORAGE_PREFIX+hashString(ip);
+        res(ownerKey);
+      }).catch(()=>{ownerKey=STORAGE_PREFIX+'local';res(ownerKey);});
+    });
+  }
 
-  function addEmoji(x,y){
-    if(messageRevealed) return;
-    clickCount++;
-    clickCounter.textContent=`Kisses: ${clickCount}`;
+  function loadIndex(){try{return parseInt(localStorage.getItem(ownerKey+'_i'))||0;}catch{return 0;}}
+  function saveIndex(i){try{localStorage.setItem(ownerKey+'_i',String(i));}catch{}}
 
-    // Alternate kiss sounds
-    const sound = kissSounds[kissIndex];
-    sound.currentTime = 0;
-    sound.play().catch(() => {});
-    kissIndex = (kissIndex + 1) % kissSounds.length;
+  function getNextMessage(){
+    let i=loadIndex();
+    const msg=messages[i];
+    i=(i+1)%messages.length;
+    saveIndex(i);
+    return msg;
+  }
 
-    const emoji=emojiList[Math.floor(Math.random()*emojiList.length)];
-    const body=Bodies.circle(x,y,physicsRadius,{restitution:0.6,friction:0.2,density:0.005});
-    World.add(world,body); bodyEmoji.set(body.id,emoji);
+  // --- alternating kiss sounds (Must be outside startGameLogic) ---
+  const kissSounds = [
+    new Audio('kiss1.mp3'),
+    new Audio('kiss2.mp3')
+  ];
 
-    if(clickCount===1){ instructions.style.opacity='0'; }
-
-    if(clickCount>=clicksToReveal && !messageRevealed){
-      messageRevealed=true;
-      Promise.race([initOwnerKey(),new Promise(r=>setTimeout(r,300))]).then(()=>{
-        const text=getNextMessage();
-        messageText.textContent=text; // Set text content
-        finalMessage.style.opacity='1'; // Show message and button
-        revealSound.currentTime=0; revealSound.play().catch(()=>{});
+  // --- Game Setup Function ---
+  function startGameLogic() {
+      
+      // Initialize state variables
+      clickCount = 0;
+      messageRevealed = false;
+      
+      // Physics setup
+      engine = Engine.create({ gravity:{ y:0.45 } });
+      world = engine.world;
+      bodyEmoji = new Map();
+      
+      // Render setup
+      render = Render.create({
+          element:container, 
+          engine:engine, 
+          options:{ width:worldWidth, height:worldHeight, wireframes:false, background:'transparent' }
       });
-    }
+      Render.run(render);
+      Runner.run(Runner.create(), engine);
+      
+      const wallOpts={isStatic:true,render:{visible:false}};
+      World.add(world,[
+          // Floor
+          Bodies.rectangle(worldWidth/2,worldHeight+40,worldWidth+200,80,wallOpts),
+          // Walls
+          Bodies.rectangle(-40,worldHeight/2,80,worldHeight,wallOpts),
+          Bodies.rectangle(worldWidth+40,worldHeight/2,80,worldHeight,wallOpts)
+      ]);
+
+      // --- Emoji PNG loader (Must be run now) ---
+      const imageCache=new Map();
+      function emojiToCodePoint(e){return Array.from(e).map(c=>c.codePointAt(0).toString(16)).join('-');}
+      function loadEmojiPNG(e){
+          if(imageCache.has(e)) return;
+          const code=emojiToCodePoint(e);
+          const url=`https://twemoji.maxcdn.com/v/latest/72x72/${code}.png`;
+          const img=new Image(); img.crossOrigin='anonymous';
+          img.onload=()=>imageCache.set(e,img);
+          img.onerror=()=>imageCache.set(e,null);
+          img.src=url;
+      }
+      emojiList.forEach(loadEmojiPNG);
+
+
+      // Custom rendering hook for emoji
+      Events.on(render,'afterRender',()=>{
+          const ctx=render.context;
+          bodyEmoji.forEach((emoji,id)=>{
+              // Use Composite.get to find the body by its ID efficiently
+              const b=Composite.get(world, id, 'body');
+              if(!b) return;
+              ctx.save(); ctx.translate(b.position.x,b.position.y); ctx.rotate(b.angle);
+              const img=imageCache.get(emoji);
+              if(img){ ctx.drawImage(img,-emojiPx/2,-emojiPx/2,emojiPx,emojiPx); }
+              else { ctx.font=`${emojiPx}px "Segoe UI Emoji","Apple Color Emoji",sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(emoji,0,0); }
+              ctx.restore();
+          });
+      });
+
+      // --- Main Logic (addEmoji) ---
+      function addEmoji(x,y){
+          if(messageRevealed) return;
+          clickCount++;
+          clickCounter.textContent=`Kisses: ${clickCount}`;
+
+          // Alternate kiss sounds
+          const sound = kissSounds[kissIndex];
+          sound.currentTime = 0;
+          sound.play().catch(() => {});
+          kissIndex = (kissIndex + 1) % kissSounds.length;
+
+          const emoji=emojiList[Math.floor(Math.random()*emojiList.length)];
+          const body=Bodies.circle(x,y,physicsRadius,{restitution:0.6,friction:0.2,density:0.005});
+          World.add(world,body); 
+          bodyEmoji.set(body.id,emoji); // Map body ID to emoji
+
+          if(clickCount===1){ instructions.style.opacity='0'; }
+
+          if(clickCount>=clicksToReveal && !messageRevealed){
+              messageRevealed=true;
+              Promise.race([initOwnerKey(),new Promise(r=>setTimeout(r,300))]).then(()=>{
+                  const text=getNextMessage();
+                  messageText.textContent=text;
+                  finalMessage.style.opacity='1'; 
+                  revealSound.currentTime=0; revealSound.play().catch(()=>{});
+              });
+          }
+      }
+
+      // --- Event Listeners ---
+      container.addEventListener('mousedown',e=>addEmoji(e.clientX,e.clientY));
+      container.addEventListener('touchstart',e=>{
+          e.preventDefault();
+          const t=e.touches[0];
+          addEmoji(t.clientX,t.clientY);
+      },{passive:false});
+      
+      // Add listener for the new button
+      playAgainButton.addEventListener('click', resetGame);
+  } // --- End of startGameLogic function ---
+
+
+  // --- New Reset Game Function ---
+  function resetGame() {
+    // 1. Hide the message
+    finalMessage.style.opacity = '0';
+    
+    // 2. Clear all emojis from the world
+    if (world) Composite.clear(world, false); // Check if world exists before clearing
+    if (bodyEmoji) bodyEmoji.clear(); // Clear our tracking map
+    
+    // 3. Re-add the walls
+    const wallOpts={isStatic:true,render:{visible:false}};
+    World.add(world,[
+      Bodies.rectangle(worldWidth/2,worldHeight+40,worldWidth+200,80,wallOpts),
+      Bodies.rectangle(-40,worldHeight/2,80,worldHeight,wallOpts),
+      Bodies.rectangle(worldWidth+40,worldHeight/2,80,worldHeight,wallOpts)
+    ]);
+    
+    // 4. Reset counters
+    clickCount = 0;
+    messageRevealed = false;
+    clickCounter.textContent = 'Kisses: 0';
+    
+    // 5. Show instructions again
+    instructions.style.opacity = '1';
+  }
+  
+  
+  // --- Password Lock Logic ---
+  
+  // Check if already unlocked in this session
+  if (sessionStorage.getItem('isUnlocked') === 'true') {
+      passwordOverlay.style.display = 'none';
+      mainContent.classList.add('visible');
+      startGameLogic();
   }
 
-  // --- New Reset Game Function ---
-  function resetGame() {
-    // 1. Hide the message
-    finalMessage.style.opacity = '0';
-    
-    // 2. Clear all emojis from the world
-    Composite.clear(world, false); // Clear non-static bodies
-    bodyEmoji.clear(); // Clear our tracking map
-    
-    // 3. Re-add the walls
-    World.add(world,[
-      Bodies.rectangle(worldWidth/2,worldHeight+40,worldWidth+200,80,wallOpts),
-      Bodies.rectangle(-40,worldHeight/2,80,worldHeight,wallOpts),
-      Bodies.rectangle(worldWidth+40,worldHeight/2,80,worldHeight,wallOpts)
-    ]);
-    
-    // 4. Reset counters
-    clickCount = 0;
-    messageRevealed = false;
-    clickCounter.textContent = 'Kisses: 0';
-    
-    // 5. Show instructions again
-    instructions.style.opacity = '1';
-  }
+  lockBox.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const enteredPassword = passwordInput.value;
 
-  // --- Event Listeners ---
-  container.addEventListener('mousedown',e=>addEmoji(e.clientX,e.clientY));
-  container.addEventListener('touchstart',e=>{
-    e.preventDefault();
-    const t=e.touches[0];
-    addEmoji(t.clientX,t.clientY);
-  },{passive:false});
+      if (enteredPassword === correctPassword) {
+          // Correct password
+          sessionStorage.setItem('isUnlocked', 'true');
+          passwordOverlay.style.opacity = '0';
+          setTimeout(() => {
+              passwordOverlay.style.display = 'none';
+          }, 300); // Wait for fade out
+          mainContent.classList.add('visible'); // Show the game
+          startGameLogic(); // Start the game now
+      } else {
+          // Wrong password
+          errorMessage.textContent = 'Wrong Password. Try Again!';
+          lockBox.classList.add('shake');
+          passwordInput.value = '';
 
-  // Add listener for the new button
-  playAgainButton.addEventListener('click', resetGame);
-
-  window.addEventListener('resize',()=>location.reload());
+          // Remove shake animation so it can be re-added
+          setTimeout(() => {
+              lockBox.classList.remove('shake');
+              errorMessage.textContent = ''; // Clear error message
+          }, 1000);
+      }
+  });
+  
+  initOwnerKey(); // Start tracking IP for message sequence
+  window.addEventListener('resize',()=>location.reload());
 });
 </script>
 </body>
 </html>
-
